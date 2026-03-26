@@ -1,0 +1,26 @@
+# Binaries
+bin/
+dist/
+wgrift
+/serve-web
+/web
+*.wasm
+
+# WASM support
+ui/web/wasm_exec.js
+
+# Database
+*.db
+*.db-wal
+*.db-shm
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# Context (Conductor workspace)
+.context/

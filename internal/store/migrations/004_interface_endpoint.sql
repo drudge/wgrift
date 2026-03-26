@@ -1,0 +1,1 @@
+ALTER TABLE interfaces ADD COLUMN endpoint TEXT NOT NULL DEFAULT '';

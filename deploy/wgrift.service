@@ -1,0 +1,17 @@
+[Unit]
+Description=wgRift WireGuard Management
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/opt/wgrift/wgrift serve --config /etc/wgrift/config.yaml
+Restart=on-failure
+RestartSec=5
+
+# WireGuard needs NET_ADMIN for interface management
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW
+
+[Install]
+WantedBy=multi-user.target

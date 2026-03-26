@@ -1,0 +1,24 @@
+server:
+  listen: "0.0.0.0:8443"
+  external_url: ""  # Set to your public IP or hostname
+  web_root: /opt/wgrift/web
+  tls:
+    mode: none      # Set to "acme" or "manual" for production
+
+database:
+  path: /var/lib/wgrift/wgrift.db
+
+encryption:
+  master_key_file: /etc/wgrift/master.key
+
+auth:
+  session_timeout: 30m
+  max_session_age: 24h
+  local:
+    enabled: true
+    min_password_length: 16
+
+logging:
+  connection_poll_interval: 30s
+  connection_timeout: 180s
+  retention_days: 90
