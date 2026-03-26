@@ -3,20 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>wgrift</title>
+    <title>wgRift</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        mono: ['JetBrains Mono', 'Fira Code', 'Cascadia Code', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            70% { box-shadow: 0 0 0 4px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+        .spinner {
+            width: 20px; height: 20px;
+            border: 2px solid #e5e7eb;
+            border-top-color: #0d9488;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+        .status-pulse { animation: pulse-ring 2s ease-out infinite; }
+        @keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes modalScaleIn { from { opacity: 0; transform: scale(0.95) translateY(4px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        .animate-fade-in { animation: modalFadeIn 0.15s ease-out; }
+        .animate-scale-in { animation: modalScaleIn 0.15s ease-out; }
+        #app > div { animation: fadeIn 0.15s ease-out; }
+        #loading { transition: opacity 0.2s ease-out; }
+        #loading.fade-out { opacity: 0; }
+    </style>
 </head>
-<body>
+<body class="bg-gray-50 text-gray-700 antialiased">
+    <div id="loading" class="fixed inset-0 flex items-center justify-center bg-white z-50">
+        <div class="flex flex-col items-center gap-4">
+            <div class="text-2xl font-semibold tracking-tight">
+                <span class="text-teal-600">wg</span><span class="text-gray-900">Rift</span>
+            </div>
+            <div class="spinner"></div>
+        </div>
+    </div>
     <div id="app"></div>
 
-    <script src="wasm_exec.js"></script>
+    <script src="/wasm_exec.js"></script>
     <script>
         const go = new Go();
-        WebAssembly.instantiateStreaming(fetch("wgrift.wasm"), go.importObject)
+        WebAssembly.instantiateStreaming(fetch("/wgrift.wasm"), go.importObject)
             .then((result) => {
                 go.run(result.instance);
             })
             .catch((err) => {
-                console.error(err);
+                console.error("WASM load error:", err);
+                document.getElementById("app").innerHTML =
+                    '<div class="flex items-center justify-center h-screen text-red-600">Failed to load wgRift</div>';
             });
     </script>
 </body>

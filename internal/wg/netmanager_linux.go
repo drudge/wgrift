@@ -5,6 +5,9 @@ package wg
 import (
 	"fmt"
 	"net"
+	"os"
+	"os/exec"
+	"path/filepath"
 
 	"github.com/vishvananda/netlink"
 )
@@ -51,8 +54,8 @@ func (m *linuxNetManager) SetAddress(name string, address string) error {
 		return fmt.Errorf("parsing address %s: %w", address, err)
 	}
 
-	if err := netlink.AddrAdd(link, addr); err != nil {
-		return fmt.Errorf("adding address to %s: %w", name, err)
+	if err := netlink.AddrReplace(link, addr); err != nil {
+		return fmt.Errorf("setting address on %s: %w", name, err)
 	}
 	return nil
 }
@@ -86,6 +89,51 @@ func (m *linuxNetManager) SetDown(name string) error {
 	}
 	if err := netlink.LinkSetDown(link); err != nil {
 		return fmt.Errorf("bringing down %s: %w", name, err)
+	}
+	return nil
+}
+
+func (m *linuxNetManager) QuickUp(name string) error {
+	out, err := exec.Command("wg-quick", "up", name).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("wg-quick up %s: %w: %s", name, err, out)
+	}
+	return nil
+}
+
+func (m *linuxNetManager) QuickDown(name string) error {
+	out, err := exec.Command("wg-quick", "down", name).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("wg-quick down %s: %w: %s", name, err, out)
+	}
+	return nil
+}
+
+func (m *linuxNetManager) SyncConf(name string, confData string) error {
+	// Write stripped config to temp file
+	tmpFile, err := os.CreateTemp("", fmt.Sprintf("wgrift-%s-*.conf", name))
+	if err != nil {
+		return fmt.Errorf("creating temp file: %w", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err := tmpFile.WriteString(confData); err != nil {
+		tmpFile.Close()
+		return fmt.Errorf("writing temp config: %w", err)
+	}
+	tmpFile.Close()
+
+	out, err := exec.Command("wg", "syncconf", name, tmpFile.Name()).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("wg syncconf %s: %w: %s", name, err, out)
+	}
+	return nil
+}
+
+func (m *linuxNetManager) SaveConf(name string, confData string) error {
+	confPath := filepath.Join("/etc/wireguard", name+".conf")
+	if err := os.WriteFile(confPath, []byte(confData), 0600); err != nil {
+		return fmt.Errorf("writing config %s: %w", confPath, err)
 	}
 	return nil
 }

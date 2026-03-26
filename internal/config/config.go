@@ -20,6 +20,7 @@ type Config struct {
 type ServerConfig struct {
 	Listen      string    `yaml:"listen"`
 	ExternalURL string    `yaml:"external_url"`
+	WebRoot     string    `yaml:"web_root"`
 	TLS         TLSConfig `yaml:"tls"`
 }
 
@@ -89,8 +90,9 @@ type UniFiConfig struct {
 func Defaults() Config {
 	return Config{
 		Server: ServerConfig{
-			Listen: "0.0.0.0:8443",
-			TLS:    TLSConfig{Mode: "none"},
+			Listen:  "0.0.0.0:8443",
+			WebRoot: "ui/web",
+			TLS:     TLSConfig{Mode: "none"},
 		},
 		Database: DatabaseConfig{
 			Path: "./wgrift.db",

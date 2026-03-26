@@ -16,3 +16,7 @@ func (m *stubNetManager) SetMTU(name string, mtu int) error   { return ErrNotSup
 func (m *stubNetManager) SetUp(name string) error             { return ErrNotSupported }
 func (m *stubNetManager) SetDown(name string) error           { return ErrNotSupported }
 func (m *stubNetManager) Exists(name string) (bool, error)    { return false, ErrNotSupported }
+func (m *stubNetManager) QuickUp(name string) error           { return ErrNotSupported }
+func (m *stubNetManager) QuickDown(name string) error         { return ErrNotSupported }
+func (m *stubNetManager) SyncConf(name, confData string) error { return ErrNotSupported }
+func (m *stubNetManager) SaveConf(name, confData string) error { return ErrNotSupported }

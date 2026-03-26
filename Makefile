@@ -6,7 +6,7 @@ LDFLAGS  = -s -w \
            -X github.com/drudge/wgrift/pkg/version.Commit=$(COMMIT) \
            -X github.com/drudge/wgrift/pkg/version.Date=$(DATE)
 
-.PHONY: build test lint clean wasm serve-web
+.PHONY: build test lint clean wasm serve-web serve dist
 
 build:
 	go build -ldflags "$(LDFLAGS)" -o bin/wgrift ./cmd/wgrift
@@ -25,3 +25,15 @@ wasm:
 
 serve-web: wasm
 	go run ./cmd/serve-web
+
+serve: wasm build
+	WGRIFT_MASTER_KEY=$${WGRIFT_MASTER_KEY:-dev-master-key} ./bin/wgrift serve
+
+dist: wasm
+	@mkdir -p dist
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o dist/wgrift ./cmd/wgrift
+	cp deploy/wgrift.service dist/
+	cp deploy/config.yaml dist/
+	cp deploy/install.sh dist/
+	@echo "Distribution files ready in dist/"
+	@echo "  Binary has embedded web assets — single file deploy"

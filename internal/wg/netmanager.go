@@ -21,4 +21,13 @@ type NetManager interface {
 	SetDown(name string) error
 	// Exists checks if the interface exists.
 	Exists(name string) (bool, error)
+	// QuickUp brings the interface up using wg-quick (handles PostUp, routes, etc).
+	QuickUp(name string) error
+	// QuickDown brings the interface down using wg-quick (handles PostDown, routes, etc).
+	QuickDown(name string) error
+	// SyncConf applies a WireGuard config using "wg syncconf" without restarting the interface.
+	// This preserves routes, iptables rules, and existing handshake state.
+	SyncConf(name string, confData string) error
+	// SaveConf writes the full wg-quick config to /etc/wireguard/<name>.conf.
+	SaveConf(name string, confData string) error
 }

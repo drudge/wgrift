@@ -1,6 +1,9 @@
 # Binaries
 bin/
+dist/
 wgrift
+/serve-web
+/web
 *.wasm
 
 # WASM support
