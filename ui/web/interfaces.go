@@ -196,6 +196,7 @@ func createInterfaceForm(existing []interfaceData, onCreated func()) loom.Node {
 	dns, setDNS := Signal("")
 	endpoint, setEndpoint := Signal("")
 	errMsg, setErrMsg := Signal("")
+	FocusInput(`input[placeholder="wg0"]`)
 
 	doCreate := func() {
 		setErrMsg("")
@@ -264,6 +265,7 @@ func importInterfaceForm(onImported func()) loom.Node {
 	id, setID := Signal("")
 	config, setConfig := Signal("")
 	errMsg, setErrMsg := Signal("")
+	FocusInput(`input[placeholder="wg0"]`)
 
 	doImport := func() {
 		setErrMsg("")

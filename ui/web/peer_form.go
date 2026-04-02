@@ -24,6 +24,7 @@ func PeerEditForm(ifaceID string, peer peerData, onSaved func()) loom.Node {
 	}
 	keepalive, setKeepalive := Signal(kaDefault)
 	errMsg, setErrMsg := Signal("")
+	FocusInput(`input[placeholder="Phone, Laptop, etc."]`)
 
 	// Parse existing server-side allowed IPs into chips
 	var allowedIPs []string
@@ -333,6 +334,7 @@ func PeerForm(ifaceID string, ifaceAddr string, usedAddrs []string, onCreated fu
 	keepalive, setKeepalive := Signal("25")
 	psk, setPSK := Signal(false)
 	errMsg, setErrMsg := Signal("")
+	FocusInput(`input[placeholder="Phone, Laptop, etc."]`)
 
 	var allowedIPs []string
 	var clientAllowedIPs []string

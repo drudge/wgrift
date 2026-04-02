@@ -17,6 +17,8 @@ func SetupView() loom.Node {
 	errMsg, setErrMsg := Signal("")
 	loading, setLoading := Signal(false)
 
+	FocusInput(`input[placeholder="admin"]`)
+
 	doSetup := func() {
 		if loading() {
 			return

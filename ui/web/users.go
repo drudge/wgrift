@@ -164,6 +164,7 @@ func createUserForm() loom.Node {
 	displayName, setDisplayName := Signal("")
 	role, setRole := Signal("viewer")
 	errMsg, setErrMsg := Signal("")
+	FocusInput(`input[placeholder="jdoe"]`)
 
 	doCreate := func() {
 		setErrMsg("")
@@ -238,6 +239,7 @@ func changePasswordForm(userID, username string) loom.Node {
 	password, setPassword := Signal("")
 	errMsg, setErrMsg := Signal("")
 	success, setSuccess := Signal(false)
+	FocusInput(`input[placeholder="min 16 characters"]`)
 
 	doChange := func() {
 		setErrMsg("")
