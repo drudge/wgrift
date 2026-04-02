@@ -12,7 +12,7 @@ import (
 // On mobile: top bar with hamburger, slide-out nav overlay.
 func Layout(content loom.Node) loom.Node {
 	return Div(
-		Apply(Attr{"class": "flex h-screen overflow-hidden bg-gray-50"}),
+		Apply(Attr{"class": "flex h-screen overflow-hidden bg-surface-0"}),
 		// Desktop sidebar (hidden on mobile)
 		Div(
 			Apply(Attr{"class": "hidden md:flex"}),
@@ -22,12 +22,15 @@ func Layout(content loom.Node) loom.Node {
 		MobileTopBar(),
 		// Mobile nav overlay
 		MobileNavOverlay(),
-		// Main content
+		// Main content area
 		Div(
-			Apply(Attr{"class": "flex-1 overflow-auto pt-14 md:pt-0"}),
+			Apply(Attr{"class": "flex-1 flex flex-col overflow-hidden"}),
 			Div(
-				Apply(Attr{"class": "p-4 md:p-8 max-w-6xl"}),
-				content,
+				Apply(Attr{"class": "flex-1 overflow-auto pt-14 md:pt-0"}),
+				Div(
+					Apply(Attr{"class": "px-5 py-6 md:px-10 md:py-8 lg:px-12 max-w-6xl"}),
+					content,
+				),
 			),
 		),
 		ConfirmModal(),

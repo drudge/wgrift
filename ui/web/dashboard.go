@@ -45,12 +45,6 @@ func DashboardView() loom.Node {
 	})
 
 	return Div(
-		Div(
-			Apply(Attr{"class": "flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-8"}),
-			H2(Apply(Attr{"class": "text-xl font-semibold text-gray-900"}), Text("Status")),
-			Btn("Refresh", "ghost", func() { refreshRoute() }),
-		),
-
 		LoadingView(loading),
 		Show(func() bool { return !loading() }, func() loom.Node {
 			return Bind(func() loom.Node {
@@ -66,34 +60,67 @@ func DashboardView() loom.Node {
 					}
 				}
 
+				// Health indicator dot
+				healthDot := "w-3 h-3 rounded-full flex-shrink-0 "
+				if runningCount > 0 && runningCount == len(d.Interfaces) {
+					healthDot += "bg-green-400 status-pulse"
+				} else if runningCount > 0 {
+					healthDot += "bg-amber-400"
+				} else {
+					healthDot += "bg-ink-4"
+				}
+
+				// Running count color — green when all up, muted when none
+				countColor := "text-ink-2"
+				if runningCount > 0 && runningCount == len(d.Interfaces) {
+					countColor = "text-green-400"
+				} else if runningCount > 0 {
+					countColor = "text-ink-1"
+				}
+
 				ifaceNodes := make([]loom.Node, 0)
 				if len(d.Interfaces) > 0 {
 					ifaceNodes = interfaceCards(d.Interfaces)
 				}
 
 				return Div(
-					// Summary stats
+					// ── Page header ──
 					Div(
-						Apply(Attr{"class": "grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8"}),
-						statCard("Interfaces", fmt.Sprintf("%d / %d running", runningCount, len(d.Interfaces))),
-						statCard("Total Peers", fmt.Sprintf("%d", d.TotalPeers)),
-						statCard("Active", fmt.Sprintf("%d", d.ActivePeers)),
-						statCard("Transfer", fmt.Sprintf("%s / %s", FormatBytes(d.TotalRx), FormatBytes(d.TotalTx))),
+						Apply(Attr{"class": "mb-8"}),
+						// Title row with health dot
+						Div(
+							Apply(Attr{"class": "flex items-center gap-3 mb-1.5"}),
+							Div(Apply(Attr{"class": healthDot})),
+							H2(
+								Apply(Attr{"class": "text-2xl font-bold tracking-tight"}),
+								Span(Apply(Attr{"class": countColor + " font-mono tabular-nums"}),
+									Text(fmt.Sprintf("%d", runningCount))),
+								Span(Apply(Attr{"class": "text-ink-1"}),
+									Text(fmt.Sprintf(" of %d running", len(d.Interfaces)))),
+							),
+						),
+						// Stats subtitle
+						Div(
+							Apply(Attr{"class": "text-sm text-ink-2 font-mono tabular-nums pl-6"}),
+							Span(Text(fmt.Sprintf("%d peers · %d active", d.TotalPeers, d.ActivePeers))),
+							Span(Apply(Attr{"class": "hidden sm:inline"}), Text(fmt.Sprintf(" · ↓ %s · ↑ %s", FormatBytes(d.TotalRx), FormatBytes(d.TotalTx)))),
+							Div(Apply(Attr{"class": "sm:hidden text-xs text-ink-3 mt-0.5"}), Text(fmt.Sprintf("↓ %s · ↑ %s", FormatBytes(d.TotalRx), FormatBytes(d.TotalTx)))),
+						),
 					),
 
-					// Interface cards
+					// ── Interfaces ──
 					Div(
 						Div(
 							Apply(Attr{"class": "flex items-center justify-between mb-4"}),
-							H3(Apply(Attr{"class": "text-xs font-medium text-gray-400 uppercase tracking-widest"}), Text("Interfaces")),
-							Btn("New Interface", "ghost", func() { navigate("/interfaces?action=create") }),
+							H3(Apply(Attr{"class": "text-[11px] font-semibold text-ink-3 uppercase tracking-[0.15em]"}), Text("Interfaces")),
+							Btn("New Interface", "primary", func() { navigate("/interfaces?action=create") }),
 						),
 						func() loom.Node {
 							if len(ifaceNodes) == 0 {
 								return EmptyState("No interfaces configured")
 							}
 							return Div(
-								Apply(Attr{"class": "space-y-3"}),
+								Apply(Attr{"class": "space-y-2"}),
 								Fragment(ifaceNodes...),
 							)
 						}(),
@@ -101,14 +128,6 @@ func DashboardView() loom.Node {
 				)
 			})
 		}),
-	)
-}
-
-func statCard(label, value string) loom.Node {
-	return Div(
-		Apply(Attr{"class": "bg-white border border-gray-200 rounded-lg p-4"}),
-		Div(Apply(Attr{"class": "text-[11px] text-gray-400 uppercase tracking-widest mb-1.5"}), Text(label)),
-		Div(Apply(Attr{"class": "text-lg font-semibold text-gray-900 font-mono"}), Text(value)),
 	)
 }
 
@@ -122,61 +141,75 @@ func interfaceCards(ifaces []interfaceSummaryData) []loom.Node {
 }
 
 func interfaceCard(iface interfaceSummaryData) loom.Node {
-	statusColor := "bg-gray-300"
+	dotClass := "w-2 h-2 rounded-full bg-ink-4 flex-shrink-0"
 	statusText := "Stopped"
-	statusClass := "text-gray-400"
+	statusClass := "text-[11px] text-ink-4 font-medium"
 	if iface.Running {
-		statusColor = "bg-emerald-500 status-pulse"
+		dotClass = "w-2 h-2 rounded-full bg-green-400 flex-shrink-0"
 		statusText = "Running"
-		statusClass = "text-emerald-600"
-	} else if iface.Enabled {
-		statusColor = "bg-amber-400"
-		statusText = "Enabled"
-		statusClass = "text-amber-600"
+		statusClass = "text-[11px] text-green-400/70 font-medium"
 	}
 
 	return Div(
-		Apply(Attr{"class": "bg-white border border-gray-200 rounded-lg p-5"}),
-
-		// Header: name + status
+		Apply(Attr{"class": "bg-surface-1 border border-line-1 rounded-lg hover:border-line-3 transition-all duration-150"}),
 		Div(
-			Apply(Attr{"class": "flex items-center justify-between mb-3"}),
+			Apply(Attr{"class": "px-5 py-4"}),
+			// Top row: dot + name + status + desktop stats
 			Div(
-				Apply(Attr{"class": "flex items-center gap-3"}),
-				Span(Apply(Attr{"class": fmt.Sprintf("inline-block w-2.5 h-2.5 rounded-full %s", statusColor)})),
-				Span(Apply(Attr{"class": "font-mono text-base font-semibold text-gray-900"}), Text(iface.ID)),
+				Apply(Attr{"class": "flex items-center justify-between gap-4"}),
+				Div(
+					Apply(Attr{"class": "flex items-center gap-3 min-w-0"}),
+					Div(Apply(Attr{"class": dotClass})),
+					Div(
+						Apply(Attr{"class": "min-w-0"}),
+						Div(
+							Apply(Attr{"class": "flex items-center gap-2.5"}),
+							Span(Apply(Attr{"class": "font-mono text-sm font-bold text-ink-1"}), Text(iface.ID)),
+							Span(Apply(Attr{"class": statusClass}), Text(statusText)),
+						),
+						Div(
+							Apply(Attr{"class": "font-mono text-xs text-ink-3 mt-0.5"}),
+							Text(fmt.Sprintf("%s · :%d", iface.Address, iface.ListenPort)),
+						),
+					),
+				),
+				// Desktop-only stats
+				Div(
+					Apply(Attr{"class": "hidden sm:flex items-center gap-4 text-xs font-mono text-ink-2 flex-shrink-0"}),
+					Span(
+						Span(Apply(Attr{"class": "text-ink-1 font-semibold"}), Text(fmt.Sprintf("%d", iface.ConnectedPeers))),
+						Text(fmt.Sprintf("/%d peers", iface.TotalPeers)),
+					),
+					func() loom.Node {
+						if iface.TotalRx > 0 || iface.TotalTx > 0 {
+							return Span(
+								Apply(Attr{"class": "text-ink-3"}),
+								Text(fmt.Sprintf("↓%s ↑%s", FormatBytes(iface.TotalRx), FormatBytes(iface.TotalTx))),
+							)
+						}
+						return Span()
+					}(),
+				),
 			),
-			Span(Apply(Attr{"class": fmt.Sprintf("text-xs font-medium %s", statusClass)}), Text(statusText)),
-		),
-
-		// Details line
-		Div(
-			Apply(Attr{"class": "text-sm text-gray-400 mb-4 font-mono"}),
-			Text(fmt.Sprintf("%s · port %d", iface.Address, iface.ListenPort)),
-		),
-
-		// Stats + Actions
-		Div(
-			Apply(Attr{"class": "flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-gray-100"}),
+			// Mobile stats row
 			Div(
-				Apply(Attr{"class": "flex items-center gap-4 text-sm"}),
+				Apply(Attr{"class": "sm:hidden flex items-center gap-3 text-xs font-mono text-ink-3 mt-2 pl-5"}),
 				Span(
-					Apply(Attr{"class": "text-gray-500"}),
-					Span(Apply(Attr{"class": "text-emerald-600 font-mono font-medium"}), Text(fmt.Sprintf("%d", iface.ConnectedPeers))),
-					Text(fmt.Sprintf(" / %d peers", iface.TotalPeers)),
+					Span(Apply(Attr{"class": "text-ink-2 font-semibold"}), Text(fmt.Sprintf("%d", iface.ConnectedPeers))),
+					Text(fmt.Sprintf("/%d peers", iface.TotalPeers)),
 				),
 				func() loom.Node {
 					if iface.TotalRx > 0 || iface.TotalTx > 0 {
 						return Span(
-							Apply(Attr{"class": "text-gray-400 text-xs font-mono"}),
 							Text(fmt.Sprintf("↓%s ↑%s", FormatBytes(iface.TotalRx), FormatBytes(iface.TotalTx))),
 						)
 					}
 					return Span()
 				}(),
 			),
+			// Actions row
 			Div(
-				Apply(Attr{"class": "flex flex-wrap items-center gap-2"}),
+				Apply(Attr{"class": "flex items-center gap-1 mt-3 sm:mt-2 pl-5 sm:pl-0 sm:justify-end border-t border-line-1 pt-3 sm:border-0 sm:pt-0"}),
 				func() loom.Node {
 					if iface.Running {
 						return Fragment(
@@ -201,7 +234,7 @@ func interfaceCard(iface interfaceSummaryData) loom.Node {
 						}()
 					})
 				}(),
-				Btn("Manage", "ghost", func() {
+				Btn("Manage →", "ghost", func() {
 					navigate(fmt.Sprintf("/interfaces/%s", iface.ID))
 				}),
 			),

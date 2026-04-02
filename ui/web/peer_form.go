@@ -17,12 +17,13 @@ import (
 func PeerEditForm(ifaceID string, peer peerData, onSaved func()) loom.Node {
 	name, setName := Signal(peer.Name)
 	address, setAddress := Signal(peer.Address)
-	keepalive, setKeepalive := Signal("")
-	errMsg, setErrMsg := Signal("")
-
+	dns, setDNS := Signal(peer.DNS)
+	kaDefault := "25"
 	if peer.PersistentKeepalive > 0 {
-		keepalive, setKeepalive = Signal(strconv.Itoa(peer.PersistentKeepalive))
+		kaDefault = strconv.Itoa(peer.PersistentKeepalive)
 	}
+	keepalive, setKeepalive := Signal(kaDefault)
+	errMsg, setErrMsg := Signal("")
 
 	// Parse existing server-side allowed IPs into chips
 	var allowedIPs []string
@@ -159,6 +160,7 @@ func PeerEditForm(ifaceID string, peer peerData, onSaved func()) loom.Node {
 				"address":              address(),
 				"allowed_ips":          ips,
 				"client_allowed_ips":   clientIPs,
+				"dns":                  dns(),
 				"persistent_keepalive": 0,
 			}
 			if keepalive() != "" {
@@ -202,6 +204,7 @@ func PeerEditForm(ifaceID string, peer peerData, onSaved func()) loom.Node {
 					doRenderClientChips()
 				}
 			}),
+			FormField("DNS", "text", "Override interface DNS (optional)", dns, func(v string) { setDNS(v) }),
 			FormField("Keepalive (sec)", "number", "25", keepalive, func(v string) { setKeepalive(v) }),
 		),
 
@@ -223,8 +226,8 @@ func renderChipList(containerID string, items []string, onRemove func(int)) {
 	for i, ip := range items {
 		idx := i
 		chip := js.Global().Get("document").Call("createElement", "span")
-		chip.Set("className", "inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono bg-gray-100 border border-gray-300 text-gray-600")
-		chip.Set("innerHTML", ip+` <button class="text-gray-400 hover:text-red-400 ml-0.5">&times;</button>`)
+		chip.Set("className", "inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono bg-surface-3 border border-line-1 text-ink-2")
+		chip.Set("innerHTML", ip+` <button class="text-ink-4 hover:text-red-400 ml-0.5 transition-colors">&times;</button>`)
 		chip.Call("querySelector", "button").Call("addEventListener", "click", js.FuncOf(func(this js.Value, args []js.Value) any {
 			onRemove(idx)
 			return nil
@@ -237,14 +240,14 @@ func renderChipList(containerID string, items []string, onRemove func(int)) {
 func chipInput(label, placeholder, chipsID, inputID string, addFn func(string), _ func() []string, onBackspace func()) loom.Node {
 	return Div(
 		Apply(Attr{"class": "mb-4"}),
-		Elem("label", Apply(Attr{"class": "block text-sm text-gray-500 mb-1"}), Text(label)),
+		Elem("label", Apply(Attr{"class": "block text-[11px] font-semibold text-ink-3 mb-2 uppercase tracking-[0.08em]"}), Text(label)),
 		Div(
-			Apply(Attr{"class": "w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded text-gray-700 text-sm focus-within:border-teal-500"}),
+			Apply(Attr{"class": "w-full px-3 py-2.5 bg-surface-0 border border-line-1 rounded-md text-ink-1 text-sm focus-within:border-wg-600/40 focus-within:ring-1 focus-within:ring-wg-600/15 transition-colors"}),
 			Div(Apply(Attr{"id": chipsID, "class": "flex flex-wrap gap-1"})),
 			Input(
 				Apply(Attr{
 					"id":          inputID,
-					"class":       "w-full bg-transparent text-gray-700 text-sm placeholder-gray-400 focus:outline-none font-mono mt-1",
+					"class":       "w-full bg-transparent text-ink-1 text-sm placeholder-ink-4 focus:outline-none font-mono mt-1",
 					"placeholder": placeholder + " — Enter to add",
 				}),
 				Apply(On{"keydown": func(evt *EventKeyboard) {
@@ -326,7 +329,8 @@ func nextAvailableIP(ifaceAddr string, usedAddrs []string) string {
 func PeerForm(ifaceID string, ifaceAddr string, usedAddrs []string, onCreated func()) loom.Node {
 	name, setName := Signal("")
 	address, setAddress := Signal(nextAvailableIP(ifaceAddr, usedAddrs))
-	keepalive, setKeepalive := Signal("")
+	dns, setDNS := Signal("")
+	keepalive, setKeepalive := Signal("25")
 	psk, setPSK := Signal(false)
 	errMsg, setErrMsg := Signal("")
 
@@ -441,6 +445,7 @@ func PeerForm(ifaceID string, ifaceAddr string, usedAddrs []string, onCreated fu
 				"address":            address(),
 				"allowed_ips":        ips,
 				"client_allowed_ips": clientIPs,
+				"dns":                dns(),
 				"psk":                psk(),
 			}
 			if keepalive() != "" {
@@ -484,6 +489,7 @@ func PeerForm(ifaceID string, ifaceAddr string, usedAddrs []string, onCreated fu
 					doRenderClientChips()
 				}
 			}),
+			FormField("DNS", "text", "Override interface DNS (optional)", dns, func(v string) { setDNS(v) }),
 			FormField("Keepalive (sec)", "number", "25", keepalive, func(v string) { setKeepalive(v) }),
 		),
 
@@ -492,14 +498,14 @@ func PeerForm(ifaceID string, ifaceAddr string, usedAddrs []string, onCreated fu
 			Div(
 				Apply(Attr{"class": "flex items-center gap-2"}),
 				Input(
-					Apply(Attr{"type": "checkbox", "id": "psk-check"}),
+					Apply(Attr{"type": "checkbox", "id": "psk-check", "class": "accent-wg-600"}),
 					Apply(On{"change": func(evt *Event) {
 						checked := evt.Target().Get("checked").Bool()
 						setPSK(checked)
 					}}),
 				),
 				Elem("label",
-					Apply(Attr{"for": "psk-check", "class": "text-sm text-gray-500"}),
+					Apply(Attr{"for": "psk-check", "class": "text-sm text-ink-2"}),
 					Text("Generate preshared key"),
 				),
 			),

@@ -5,6 +5,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/loom-go/loom"
 	. "github.com/loom-go/loom/components"
@@ -38,9 +39,7 @@ func UsersView() loom.Node {
 	Effect(func() { loadUsers() })
 
 	return Div(
-		Div(
-			Apply(Attr{"class": "flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-8"}),
-			H2(Apply(Attr{"class": "text-xl font-semibold text-gray-900"}), Text("Users")),
+		PageHeader("Users", "Manage access to wgRift",
 			Btn("Add User", "primary", func() {
 				usersShowForm = !usersShowForm
 				usersPasswordUserID = ""
@@ -67,15 +66,19 @@ func UsersView() loom.Node {
 			}
 
 			cards := make([]loom.Node, 0, len(list))
-			rows := make([]loom.Node, 0, len(list)*2)
 			for _, u := range list {
 				u := u
-				roleBadge := Badge(u.Role, func() string {
-					if u.Role == "admin" {
-						return "teal"
-					}
-					return ""
-				}())
+
+				// Avatar initial
+				initial := strings.ToUpper(u.Username[:1])
+
+				// Role badge color
+				roleColor := ""
+				if u.Role == "admin" {
+					roleColor = "teal"
+				}
+
+				// Action buttons
 				userActions := Div(
 					Apply(Attr{"class": "flex items-center gap-0.5"}),
 					IconBtn("settings", "Change password", func() {
@@ -103,109 +106,53 @@ func UsersView() loom.Node {
 					}(),
 				)
 
-				// Mobile card
+				// Build card children
 				cardChildren := []loom.Node{
-					Apply(Attr{"class": "bg-white border border-gray-200 rounded-lg p-4"}),
+					Apply(Attr{"class": "bg-surface-1 rounded-lg px-6 py-4"}),
 					Div(
 						Apply(Attr{"class": "flex items-center justify-between"}),
+						// Left: avatar + name + role
 						Div(
-							Apply(Attr{"class": "min-w-0"}),
+							Apply(Attr{"class": "flex items-center gap-4 min-w-0"}),
+							// Avatar circle with initial
 							Div(
-								Apply(Attr{"class": "flex items-center gap-2 mb-0.5"}),
-								Span(Apply(Attr{"class": "text-sm font-medium text-gray-900"}), Text(u.Username)),
-								roleBadge,
+								Apply(Attr{"class": "w-10 h-10 rounded-lg bg-wg-600/15 flex items-center justify-center text-sm font-bold text-wg-400 uppercase flex-shrink-0"}),
+								Text(initial),
 							),
-							func() loom.Node {
-								if u.DisplayName != "" {
-									return Div(Apply(Attr{"class": "text-xs text-gray-400"}), Text(u.DisplayName))
-								}
-								return Span()
-							}(),
+							Div(
+								Apply(Attr{"class": "min-w-0"}),
+								Div(
+									Apply(Attr{"class": "flex items-center gap-2"}),
+									Span(Apply(Attr{"class": "text-sm font-semibold text-ink-1"}), Text(u.Username)),
+									Badge(u.Role, roleColor),
+								),
+								func() loom.Node {
+									if u.DisplayName != "" {
+										return Div(Apply(Attr{"class": "text-xs text-ink-3 mt-0.5"}), Text(u.DisplayName))
+									}
+									return Span()
+								}(),
+							),
 						),
+						// Right: actions
 						userActions,
 					),
 				}
+
+				// Inline password form if active
 				if usersPasswordUserID == u.ID {
 					cardChildren = append(cardChildren, Div(
-						Apply(Attr{"class": "mt-3 pt-3 border-t border-gray-100"}),
+						Apply(Attr{"class": "mt-4 pt-4 border-t border-line-1"}),
 						changePasswordForm(u.ID, u.Username),
 					))
 				}
-				cards = append(cards, Div(cardChildren...))
 
-				// Desktop row
-				rows = append(rows, Elem("tr",
-					Apply(Attr{"class": "border-b border-gray-100 hover:bg-gray-50 transition-colors"}),
-					Elem("td", Apply(Attr{"class": "px-4 py-3 text-sm font-medium text-gray-900"}), Text(u.Username)),
-					Elem("td", Apply(Attr{"class": "px-4 py-3 text-sm text-gray-500"}), Text(u.DisplayName)),
-					Elem("td", Apply(Attr{"class": "px-4 py-3"}), Badge(u.Role, func() string {
-						if u.Role == "admin" {
-							return "teal"
-						}
-						return ""
-					}())),
-					Elem("td", Apply(Attr{"class": "px-4 py-3"}),
-						Div(
-							Apply(Attr{"class": "flex items-center gap-0.5 justify-end"}),
-							IconBtn("settings", "Change password", func() {
-								usersShowForm = false
-								if usersPasswordUserID == u.ID {
-									usersPasswordUserID = ""
-								} else {
-									usersPasswordUserID = u.ID
-								}
-								refreshRoute()
-							}),
-							func() loom.Node {
-								if currentUser() != nil && currentUser().ID == u.ID {
-									return Span()
-								}
-								return IconBtnDanger("trash-2", "Delete user", func() {
-									ConfirmAction(fmt.Sprintf("Delete user %s? This cannot be undone.", u.Username), func() {
-										go func() {
-											apiFetch("DELETE", fmt.Sprintf("/api/v1/users/%s", u.ID), nil, nil)
-											usersPasswordUserID = ""
-											refreshRoute()
-										}()
-									})
-								})
-							}(),
-						),
-					),
-				))
-				if usersPasswordUserID == u.ID {
-					rows = append(rows, Elem("tr",
-						Apply(Attr{"class": "border-b border-gray-100 bg-gray-50"}),
-						Elem("td", Apply(Attr{"class": "p-4", "colspan": "4"}),
-							changePasswordForm(u.ID, u.Username),
-						),
-					))
-				}
+				cards = append(cards, Div(cardChildren...))
 			}
 
 			return Div(
-				// Mobile cards
-				Div(
-					Apply(Attr{"class": "md:hidden space-y-3"}),
-					Fragment(cards...),
-				),
-				// Desktop table
-				Div(
-					Apply(Attr{"class": "hidden md:block bg-white border border-gray-200 rounded-lg overflow-hidden"}),
-					Elem("table",
-						Apply(Attr{"class": "w-full text-sm"}),
-						Elem("thead",
-							Elem("tr",
-								Apply(Attr{"class": "border-b border-gray-200 text-left text-[11px] uppercase tracking-widest text-gray-400"}),
-								Elem("th", Apply(Attr{"class": "px-4 py-3"}), Text("Username")),
-								Elem("th", Apply(Attr{"class": "px-4 py-3"}), Text("Display Name")),
-								Elem("th", Apply(Attr{"class": "px-4 py-3"}), Text("Role")),
-								Elem("th", Apply(Attr{"class": "px-4 py-3 text-right"}), Text("Actions")),
-							),
-						),
-						Elem("tbody", rows...),
-					),
-				),
+				Apply(Attr{"class": "space-y-2"}),
+				Fragment(cards...),
 			)
 		}),
 	)
@@ -263,10 +210,10 @@ func createUserForm() loom.Node {
 			FormField("Password", "password", "min 16 characters", password, func(v string) { setPassword(v) }),
 			Div(
 				Apply(Attr{"class": "mb-4"}),
-				Elem("label", Apply(Attr{"class": "block text-sm text-gray-600 mb-1.5"}), Text("Role")),
+				Elem("label", Apply(Attr{"class": "block text-xs font-medium text-ink-3 mb-2 uppercase tracking-[0.08em]"}), Text("Role")),
 				Elem("select",
 					Apply(Attr{
-						"class": "w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-900 text-sm focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500/20",
+						"class": "w-full px-3.5 py-2.5 bg-surface-0 border border-line-1 rounded-lg text-ink-1 text-sm focus:outline-none focus:border-wg-600/50 focus:ring-1 focus:ring-wg-600/20 transition-colors",
 					}),
 					Apply(On{"change": func(evt *EventInput) {
 						setRole(evt.InputValue())
@@ -323,14 +270,14 @@ func changePasswordForm(userID, username string) loom.Node {
 
 	return Div(
 		Div(
-			Apply(Attr{"class": "text-sm font-medium text-gray-700 mb-3"}),
+			Apply(Attr{"class": "text-sm font-medium text-ink-1 mb-3"}),
 			Text(fmt.Sprintf("Change password for %s", username)),
 		),
 		ErrorAlert(errMsg),
 		Bind(func() loom.Node {
 			if success() {
 				return Div(
-					Apply(Attr{"class": "mb-3 p-3 bg-emerald-50 border border-emerald-200 rounded-md text-emerald-700 text-sm"}),
+					Apply(Attr{"class": "mb-3 p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-green-400 text-sm"}),
 					Text("Password updated successfully"),
 				)
 			}

@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"syscall/js"
 	"time"
 
@@ -12,11 +13,11 @@ import (
 	. "github.com/loom-go/web/components"
 )
 
-// Card wraps content in a white bordered panel.
+// Card wraps content in an elevated surface.
 func Card(children ...loom.Node) loom.Node {
 	return Div(
 		append([]loom.Node{
-			Apply(Attr{"class": "bg-white border border-gray-200 rounded-lg p-5"}),
+			Apply(Attr{"class": "bg-surface-1 border border-line-1 rounded-lg p-6"}),
 		}, children...)...,
 	)
 }
@@ -24,25 +25,48 @@ func Card(children ...loom.Node) loom.Node {
 // CardHeader is a card title row.
 func CardHeader(title string, extra ...loom.Node) loom.Node {
 	children := []loom.Node{
-		Apply(Attr{"class": "flex items-center justify-between mb-4"}),
-		H3(Apply(Attr{"class": "text-xs font-medium text-gray-400 uppercase tracking-widest"}), Text(title)),
+		Apply(Attr{"class": "flex flex-wrap items-center justify-between gap-3 mb-5"}),
+		H3(Apply(Attr{"class": "text-[11px] font-semibold text-ink-3 uppercase tracking-[0.15em]"}), Text(title)),
 	}
 	children = append(children, extra...)
 	return Div(children...)
 }
 
-// Btn renders a button with optional variant.
+// PageHeader renders a bold page title with optional actions.
+func PageHeader(title, subtitle string, actions ...loom.Node) loom.Node {
+	children := []loom.Node{
+		Apply(Attr{"class": "flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8"}),
+		Div(
+			H2(Apply(Attr{"class": "text-2xl font-bold text-ink-1 tracking-tight"}), Text(title)),
+			func() loom.Node {
+				if subtitle != "" {
+					return P(Apply(Attr{"class": "text-sm text-ink-3 mt-1"}), Text(subtitle))
+				}
+				return Span()
+			}(),
+		),
+	}
+	if len(actions) > 0 {
+		children = append(children, Div(
+			Apply(Attr{"class": "flex items-center gap-2"}),
+			Fragment(actions...),
+		))
+	}
+	return Div(children...)
+}
+
+// Btn renders a button with variant styling.
 func Btn(label string, variant string, handler func()) loom.Node {
-	class := "inline-flex items-center justify-center text-sm font-medium rounded-md border transition-colors cursor-pointer "
+	class := "inline-flex items-center justify-center font-medium rounded-md transition-all duration-100 cursor-pointer "
 	switch variant {
 	case "primary":
-		class += "px-4 py-2 bg-teal-600 border-teal-600 text-white hover:bg-teal-700 active:bg-teal-800"
+		class += "text-xs px-4 py-2 border border-wg-500/40 text-wg-400 bg-wg-600/10 hover:bg-wg-600/20 hover:border-wg-500/60 active:bg-wg-600/25"
 	case "danger":
-		class += "px-3 py-1.5 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+		class += "text-xs px-3.5 py-2 text-red-400/80 hover:text-red-400 hover:bg-red-500/10"
 	case "ghost":
-		class += "px-3 py-1.5 border-gray-300 text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+		class += "text-xs px-3.5 py-2 text-ink-2 hover:text-ink-1 hover:bg-surface-2"
 	default:
-		class += "px-3 py-1.5 border-gray-300 text-gray-600 hover:bg-gray-50"
+		class += "text-xs px-3.5 py-2 text-ink-2 hover:text-ink-1 hover:bg-surface-2"
 	}
 
 	return Button(
@@ -56,7 +80,7 @@ func Btn(label string, variant string, handler func()) loom.Node {
 func IconBtn(iconName string, title string, handler func()) loom.Node {
 	return Button(
 		Apply(Attr{
-			"class": "w-8 h-8 rounded-md flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors",
+			"class": "w-8 h-8 rounded-md flex items-center justify-center text-ink-4 hover:text-ink-1 hover:bg-surface-2 transition-all duration-100",
 			"title": title,
 		}),
 		Apply(On{"click": func() { handler() }}),
@@ -68,7 +92,7 @@ func IconBtn(iconName string, title string, handler func()) loom.Node {
 func IconBtnDanger(iconName string, title string, handler func()) loom.Node {
 	return Button(
 		Apply(Attr{
-			"class": "w-8 h-8 rounded-md flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors",
+			"class": "w-8 h-8 rounded-md flex items-center justify-center text-ink-4 hover:text-red-400 hover:bg-red-500/10 transition-all duration-100",
 			"title": title,
 		}),
 		Apply(On{"click": func() { handler() }}),
@@ -77,34 +101,32 @@ func IconBtnDanger(iconName string, title string, handler func()) loom.Node {
 }
 
 // StatusDot renders a colored status indicator.
-// Three states: disabled (red ring with line), disconnected (gray), connected (green pulse).
 func StatusDot(enabled, connected bool) loom.Node {
 	if !enabled {
-		// Disabled: red outline ring with a diagonal line through it
-		return Span(Apply(Attr{"class": "inline-flex items-center justify-center w-3 h-3 rounded-full border-[1.5px] border-red-400 bg-white"}),
-			Span(Apply(Attr{"class": "block w-[7px] h-[1.5px] bg-red-400 rounded-full -rotate-45"})),
+		return Span(Apply(Attr{"class": "inline-flex items-center justify-center w-2.5 h-2.5 rounded-full border-[1.5px] border-red-400/50 bg-transparent"}),
+			Span(Apply(Attr{"class": "block w-[6px] h-[1.5px] bg-red-400/50 rounded-full -rotate-45"})),
 		)
 	}
 	if connected {
-		return Span(Apply(Attr{"class": "inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 status-pulse"}))
+		return Span(Apply(Attr{"class": "inline-block w-2.5 h-2.5 rounded-full bg-green-500 status-pulse"}))
 	}
-	return Span(Apply(Attr{"class": "inline-block w-2.5 h-2.5 rounded-full bg-gray-300"}))
+	return Span(Apply(Attr{"class": "inline-block w-2.5 h-2.5 rounded-full bg-ink-4"}))
 }
 
 // Badge renders a small label.
 func Badge(label string, color string) loom.Node {
-	class := "inline-block px-2 py-0.5 text-xs font-medium rounded-md "
+	class := "inline-block px-2 py-0.5 text-[10px] font-semibold rounded "
 	switch color {
 	case "teal":
-		class += "bg-teal-50 text-teal-700 border border-teal-200"
+		class += "bg-wg-600/15 text-wg-400"
 	case "amber":
-		class += "bg-amber-50 text-amber-700 border border-amber-200"
+		class += "bg-amber-500/10 text-amber-400"
 	case "red":
-		class += "bg-red-50 text-red-700 border border-red-200"
+		class += "bg-red-500/10 text-red-400"
 	case "emerald":
-		class += "bg-emerald-50 text-emerald-700 border border-emerald-200"
+		class += "bg-green-500/10 text-green-400"
 	default:
-		class += "bg-gray-100 text-gray-600 border border-gray-200"
+		class += "bg-surface-3 text-ink-3"
 	}
 	return Span(Apply(Attr{"class": class}), Text(label))
 }
@@ -115,11 +137,10 @@ func MonoText(content string) loom.Node {
 }
 
 // FormField renders a label + input.
-// The value accessor is read once for the initial value (not reactive, to avoid cursor reset).
 func FormField(label, inputType, placeholder string, value Accessor[string], onInput func(string)) loom.Node {
 	initVal := value()
 	attrs := Attr{
-		"class":       "w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500/20",
+		"class":       "w-full px-3.5 py-2.5 bg-surface-0 border border-line-1 rounded-md text-ink-1 text-sm placeholder-ink-4 focus:outline-none focus:border-wg-600/40 focus:ring-1 focus:ring-wg-600/15 transition-colors font-mono",
 		"type":        inputType,
 		"placeholder": placeholder,
 	}
@@ -128,7 +149,7 @@ func FormField(label, inputType, placeholder string, value Accessor[string], onI
 	}
 	return Div(
 		Apply(Attr{"class": "mb-4"}),
-		Elem("label", Apply(Attr{"class": "block text-sm text-gray-600 mb-1.5"}), Text(label)),
+		Elem("label", Apply(Attr{"class": "block text-[11px] font-semibold text-ink-3 mb-2 uppercase tracking-[0.08em]"}), Text(label)),
 		Input(
 			Apply(attrs),
 			Apply(On{"input": func(evt *EventInput) {
@@ -161,7 +182,6 @@ func FormatBytes(b int64) string {
 func FormatTimestamp(ts string) string {
 	t, err := time.Parse(time.RFC3339, ts)
 	if err != nil {
-		// Try with nanoseconds
 		t, err = time.Parse(time.RFC3339Nano, ts)
 		if err != nil {
 			return ts
@@ -196,9 +216,9 @@ func Toast() loom.Node {
 			return Div(Apply(Attr{"class": "hidden"}))
 		}
 		return Div(
-			Apply(Attr{"class": "fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-fade-in"}),
+			Apply(Attr{"class": "fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-toast"}),
 			Div(
-				Apply(Attr{"class": "flex items-center gap-2 px-4 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg shadow-lg"}),
+				Apply(Attr{"class": "flex items-center gap-2.5 px-5 py-3 bg-surface-3 border border-line-3 text-ink-1 text-sm font-medium rounded-lg"}),
 				Icon("check", 16),
 				Text(msg),
 			),
@@ -218,13 +238,11 @@ var (
 	setConfirmState func(*confirmModalState)
 )
 
-// initConfirmModal sets up the confirm modal signals. Call from main before Loom mounts.
 func initConfirmModal() {
 	confirmState, setConfirmState = Signal[*confirmModalState](nil)
 }
 
 // ConfirmAction shows a custom modal with the given message.
-// If the user clicks "Confirm", onConfirm is called.
 func ConfirmAction(message string, onConfirm func()) {
 	setConfirmState(&confirmModalState{
 		Message:   message,
@@ -232,15 +250,11 @@ func ConfirmAction(message string, onConfirm func()) {
 	})
 }
 
-// dismissConfirm closes the modal without running the callback.
 func dismissConfirm() {
 	setConfirmState(nil)
 }
 
 // ConfirmModal renders the confirmation modal overlay.
-// Place this once in the layout so it's always available.
-// Uses Bind with identical DOM structure in both branches (hidden vs visible)
-// to avoid Loom's Show cleanup bug.
 func ConfirmModal() loom.Node {
 	return Bind(func() loom.Node {
 		st := confirmState()
@@ -250,50 +264,45 @@ func ConfirmModal() loom.Node {
 			msg = st.Message
 		}
 
-		// Always render the same structure; toggle visibility via classes
-		backdropClass := "fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px] animate-fade-in"
-		cardClass := "bg-white rounded-xl shadow-2xl shadow-black/10 max-w-sm w-full mx-4 overflow-hidden animate-scale-in"
+		backdropClass := "fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in"
+		cardClass := "bg-surface-2 border border-line-1 rounded-lg max-w-sm w-full mx-4 overflow-hidden animate-scale-in"
 		if !visible {
 			backdropClass = "fixed inset-0 z-50 hidden"
-			cardClass = "bg-white rounded-xl shadow-2xl max-w-sm w-full mx-4 overflow-hidden hidden"
+			cardClass = "bg-surface-2 border border-line-1 rounded-lg max-w-sm w-full mx-4 overflow-hidden hidden"
 		}
 
 		return Div(
-			// Backdrop
 			Apply(Attr{"class": backdropClass}),
 			Apply(On{"click": func() { dismissConfirm() }}),
-			// Modal card
 			Div(
 				Apply(Attr{"class": cardClass}),
 				Apply(On{"click": func(evt *Event) { evt.StopPropagation() }}),
-				// Header with icon + title
+				// Status stripe — danger
+				Div(Apply(Attr{"class": "h-[2px] bg-red-600"})),
 				Div(
-					Apply(Attr{"class": "px-5 pt-5 pb-0"}),
+					Apply(Attr{"class": "px-6 pt-5 pb-0"}),
 					Div(
-						Apply(Attr{"class": "flex items-start gap-3"}),
-						// Icon
+						Apply(Attr{"class": "flex items-start gap-4"}),
 						Div(
-							Apply(Attr{"class": "flex-shrink-0 w-9 h-9 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center"}),
-							Span(Apply(Attr{"class": "text-red-500"}), Apply(innerHTML(icons["triangle-alert"](18)))),
+							Apply(Attr{"class": "flex-shrink-0 w-9 h-9 rounded-md bg-red-500/10 flex items-center justify-center"}),
+							Span(Apply(Attr{"class": "text-red-400"}), Apply(innerHTML(icons["triangle-alert"](16)))),
 						),
-						// Title + message
 						Div(
 							Apply(Attr{"class": "flex-1 min-w-0"}),
-							P(Apply(Attr{"class": "text-sm font-semibold text-gray-900"}), Text("Are you sure?")),
-							P(Apply(Attr{"class": "mt-1 text-sm text-gray-500 leading-relaxed"}), Text(msg)),
+							P(Apply(Attr{"class": "text-sm font-semibold text-ink-1"}), Text("Confirm action")),
+							P(Apply(Attr{"class": "mt-1.5 text-sm text-ink-3 leading-relaxed"}), Text(msg)),
 						),
 					),
 				),
-				// Buttons
 				Div(
-					Apply(Attr{"class": "flex items-center justify-end gap-2 px-5 py-4 mt-3 bg-gray-50 border-t border-gray-100"}),
+					Apply(Attr{"class": "flex items-center justify-end gap-3 px-6 py-4 mt-2"}),
 					Button(
-						Apply(Attr{"class": "inline-flex items-center justify-center text-xs font-medium rounded-md border transition-colors cursor-pointer px-3 py-1.5 bg-white border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 shadow-sm"}),
+						Apply(Attr{"class": "inline-flex items-center justify-center text-xs font-medium rounded-md transition-all duration-100 cursor-pointer px-4 py-2 text-ink-3 hover:bg-surface-3 hover:text-ink-1"}),
 						Apply(On{"click": func() { dismissConfirm() }}),
 						Text("Cancel"),
 					),
 					Button(
-						Apply(Attr{"class": "inline-flex items-center justify-center text-xs font-medium rounded-md border transition-colors cursor-pointer px-3 py-1.5 bg-red-600 border-red-600 text-white hover:bg-red-700 active:bg-red-800 shadow-sm"}),
+						Apply(Attr{"class": "inline-flex items-center justify-center text-xs font-semibold rounded-md transition-all duration-100 cursor-pointer px-4 py-2 bg-red-600 text-white hover:bg-red-700"}),
 						Apply(On{"click": func() {
 							st := confirmState()
 							if st != nil && st.OnConfirm != nil {
@@ -325,7 +334,7 @@ func LoadingView(loading Accessor[bool]) loom.Node {
 	return Bind(func() loom.Node {
 		if loading() {
 			return Div(
-				Apply(Attr{"class": "flex items-center justify-center p-8"}),
+				Apply(Attr{"class": "flex items-center justify-center p-16"}),
 				Div(Apply(Attr{"class": "spinner"})),
 			)
 		}
@@ -338,10 +347,21 @@ func LoadingView(loading Accessor[bool]) loom.Node {
 
 // EmptyState renders a centered message for empty lists.
 func EmptyState(msg string) loom.Node {
+	lower := strings.ToLower(msg)
+	iconName := "inbox"
+	if strings.Contains(lower, "log") || strings.Contains(lower, "connection") {
+		iconName = "scroll-text"
+	} else if strings.Contains(lower, "interface") {
+		iconName = "chevrons-left-right-ellipsis"
+	} else if strings.Contains(lower, "peer") {
+		iconName = "network"
+	} else if strings.Contains(lower, "user") {
+		iconName = "users"
+	}
 	return Div(
-		Apply(Attr{"class": "flex flex-col items-center justify-center py-12 gap-3 text-gray-300"}),
-		Icon("network", 32),
-		P(Apply(Attr{"class": "text-gray-400 text-sm"}), Text(msg)),
+		Apply(Attr{"class": "flex flex-col items-center justify-center py-20 gap-4"}),
+		Span(Apply(Attr{"class": "text-ink-4"}), Icon(iconName, 32)),
+		P(Apply(Attr{"class": "text-ink-3 text-sm"}), Text(msg)),
 	)
 }
 
@@ -372,8 +392,8 @@ func ErrorAlert(errMsg Accessor[string]) loom.Node {
 			)
 		}
 		return Div(
-			Apply(Attr{"class": "mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm flex items-center gap-2"}),
-			Span(Apply(Attr{"class": "shrink-0 text-red-500"}), Apply(innerHTML(icons["triangle-alert"](16)))),
+			Apply(Attr{"class": "mb-5 p-3.5 bg-red-500/10 border border-red-500/20 rounded-md text-red-400 text-sm flex items-center gap-3"}),
+			Span(Apply(Attr{"class": "shrink-0 text-red-400"}), Apply(innerHTML(icons["triangle-alert"](15)))),
 			Span(Text(msg)),
 		)
 	})

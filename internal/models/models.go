@@ -33,6 +33,7 @@ type Peer struct {
 	Address               string    `json:"address"`
 	AllowedIPs            string    `json:"allowed_ips"`
 	ClientAllowedIPs      string    `json:"client_allowed_ips"`
+	DNS                   string    `json:"dns"`
 	Endpoint              string    `json:"endpoint,omitempty"`
 	PersistentKeepalive   int       `json:"persistent_keepalive"`
 	Enabled               bool      `json:"enabled"`
