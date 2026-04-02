@@ -1,7 +1,7 @@
 # Binaries
 bin/
 dist/
-wgrift
+/wgrift
 /serve-web
 /web
 *.wasm
