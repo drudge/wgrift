@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 )
@@ -19,7 +20,24 @@ type setupCheckResponse struct {
 	NeedsSetup bool `json:"needs_setup"`
 }
 
+type oidcProviderInfo struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	LoginURL string `json:"login_url"`
+}
+
+type authOptionsResponse struct {
+	AuthRequired     bool               `json:"auth_required"`
+	OIDCProviders    []oidcProviderInfo `json:"oidc_providers"`
+	LocalAuthEnabled bool               `json:"local_auth_enabled"`
+}
+
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
+	if !s.cfg.Auth.Local.Enabled {
+		writeError(w, http.StatusForbidden, "local authentication is disabled")
+		return
+	}
+
 	var req loginRequest
 	if err := readJSON(r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
@@ -29,6 +47,11 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	user, err := s.auth.Authenticate(req.Username, req.Password)
 	if err != nil {
 		writeError(w, http.StatusUnauthorized, "invalid credentials")
+		return
+	}
+
+	if user.OIDCProvider != "" {
+		writeError(w, http.StatusForbidden, "this account uses SSO login")
 		return
 	}
 
@@ -85,13 +108,13 @@ func (s *Server) handleGetSession(w http.ResponseWriter, r *http.Request) {
 
 	cookie, err := r.Cookie(cookieName)
 	if err != nil {
-		writeError(w, http.StatusUnauthorized, "not authenticated")
+		s.writeAuthOptions(w)
 		return
 	}
 
 	session, user, err := s.auth.ValidateSession(cookie.Value)
 	if err != nil {
-		writeError(w, http.StatusUnauthorized, "invalid session")
+		s.writeAuthOptions(w)
 		return
 	}
 
@@ -138,5 +161,24 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, sessionResponse{
 		User:      user,
 		CSRFToken: session.CSRFToken,
+	})
+}
+
+func (s *Server) writeAuthOptions(w http.ResponseWriter) {
+	providers := []oidcProviderInfo{}
+	if s.oidc != nil {
+		for _, p := range s.oidc.ListProviders() {
+			providers = append(providers, oidcProviderInfo{
+				ID:       p.ID,
+				Name:     p.Name,
+				LoginURL: fmt.Sprintf("/api/v1/auth/oidc/%s/login", p.ID),
+			})
+		}
+	}
+
+	writeJSON(w, http.StatusOK, authOptionsResponse{
+		AuthRequired:     true,
+		OIDCProviders:    providers,
+		LocalAuthEnabled: s.cfg.Auth.Local.Enabled,
 	})
 }

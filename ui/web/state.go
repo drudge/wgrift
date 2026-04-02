@@ -10,10 +10,12 @@ import (
 
 // Pre-Loom auth state — set by checkSessionPreload before Loom starts.
 var (
-	preloadNeedsSetup bool
-	preloadUser       *userData
-	preloadCSRF       string
-	preloadAuthed     bool
+	preloadNeedsSetup       bool
+	preloadUser             *userData
+	preloadCSRF             string
+	preloadAuthed           bool
+	preloadOIDCProviders    []oidcProviderInfo
+	preloadLocalAuthEnabled bool
 )
 
 // Loom reactive signals — set by initState, populated from preload values.
@@ -57,7 +59,15 @@ func checkSessionPreload() {
 		return
 	}
 
-	// Try parsing as session data
+	// Check for auth options response (not authenticated)
+	var opts authOptions
+	if err := unmarshalData(resp.Data, &opts); err == nil && opts.AuthRequired {
+		preloadOIDCProviders = opts.OIDCProviders
+		preloadLocalAuthEnabled = opts.LocalAuthEnabled
+		return
+	}
+
+	// Try parsing as session data (authenticated)
 	var session sessionData
 	if err := unmarshalData(resp.Data, &session); err == nil && session.User.ID != "" {
 		preloadUser = &session.User

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/drudge/wgrift/internal/auth"
 	"github.com/drudge/wgrift/internal/config"
@@ -19,6 +20,7 @@ const cookieName = "wgrift_session"
 type Server struct {
 	cfg     config.Config
 	auth    *auth.Service
+	oidc    *auth.OIDCService
 	manager *wg.Manager
 	store   store.Store
 	enc     *crypto.Encryptor
@@ -28,10 +30,11 @@ type Server struct {
 }
 
 // New creates a new Server.
-func New(cfg config.Config, authSvc *auth.Service, mgr *wg.Manager, s store.Store, enc *crypto.Encryptor) *Server {
+func New(cfg config.Config, authSvc *auth.Service, oidcSvc *auth.OIDCService, mgr *wg.Manager, s store.Store, enc *crypto.Encryptor) *Server {
 	srv := &Server{
 		cfg:     cfg,
 		auth:    authSvc,
+		oidc:    oidcSvc,
 		manager: mgr,
 		store:   s,
 		enc:     enc,
@@ -47,6 +50,25 @@ func New(cfg config.Config, authSvc *auth.Service, mgr *wg.Manager, s store.Stor
 	}
 
 	return srv
+}
+
+// externalURL returns the external URL for this server, used for OIDC callbacks.
+// Checks the settings DB first, then config, then derives from the request.
+func (s *Server) externalURL(r *http.Request) string {
+	// Try DB setting first
+	if url, err := s.store.GetSetting("external_url"); err == nil && url != "" {
+		return strings.TrimRight(url, "/")
+	}
+	// Fall back to config
+	if s.cfg.Server.ExternalURL != "" {
+		return strings.TrimRight(s.cfg.Server.ExternalURL, "/")
+	}
+	// Derive from request
+	scheme := "https"
+	if s.cfg.Server.TLS.Mode == "none" {
+		scheme = "http"
+	}
+	return scheme + "://" + r.Host
 }
 
 // Start starts the HTTP server and connection poller.

@@ -32,6 +32,7 @@ type Store interface {
 	CreateUser(user *models.User) error
 	GetUser(id string) (*models.User, error)
 	GetUserByUsername(username string) (*models.User, error)
+	GetUserByOIDCIdentity(provider, subject string) (*models.User, error)
 	ListUsers() ([]models.User, error)
 	UpdateUser(user *models.User) error
 	DeleteUser(id string) error
@@ -44,6 +45,24 @@ type Store interface {
 	DeleteSession(id string) error
 	DeleteExpiredSessions() error
 	DeleteUserSessions(userID string) error
+
+	// Settings
+	GetSetting(key string) (string, error)
+	SetSetting(key, value string) error
+
+	// OIDC Providers
+	CreateOIDCProvider(provider *models.OIDCProvider) error
+	GetOIDCProvider(id string) (*models.OIDCProvider, error)
+	GetOIDCProviderByName(name string) (*models.OIDCProvider, error)
+	ListOIDCProviders() ([]models.OIDCProvider, error)
+	UpdateOIDCProvider(provider *models.OIDCProvider) error
+	DeleteOIDCProvider(id string) error
+
+	// OIDC States
+	CreateOIDCState(state *models.OIDCState) error
+	GetOIDCState(state string) (*models.OIDCState, error)
+	DeleteOIDCState(state string) error
+	DeleteExpiredOIDCStates() error
 
 	// Connection Logs
 	CreateConnectionLog(log *models.ConnectionLog) error

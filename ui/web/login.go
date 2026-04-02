@@ -3,6 +3,7 @@
 package main
 
 import (
+	"fmt"
 	"syscall/js"
 
 	"github.com/loom-go/loom"
@@ -16,7 +17,12 @@ func LoginView() loom.Node {
 	errMsg, setErrMsg := Signal("")
 	loading, setLoading := Signal(false)
 
-	FocusInput("input[type=text]")
+	hasOIDC := len(preloadOIDCProviders) > 0
+	hasLocal := preloadLocalAuthEnabled
+
+	if hasLocal {
+		FocusInput("input[type=text]")
+	}
 
 	var doLogin func()
 	doLogin = func() {
@@ -59,6 +65,65 @@ func LoginView() loom.Node {
 			doLogin()
 		}
 	}}
+
+	// Build the form content
+	var formContent []loom.Node
+
+	// OIDC provider buttons
+	if hasOIDC {
+		var oidcButtons []loom.Node
+		for _, p := range preloadOIDCProviders {
+			p := p
+			label := fmt.Sprintf("Sign in with %s", p.Name)
+			oidcButtons = append(oidcButtons, Button(
+				Apply(Attr{"class": "w-full px-4 py-3 text-sm font-semibold rounded-lg border border-line-2 text-ink-1 bg-surface-1 hover:bg-surface-2 hover:border-line-3 transition-all duration-100 flex items-center justify-center gap-2"}),
+				Apply(On{"click": func() {
+					js.Global().Get("window").Get("location").Set("href", p.LoginURL)
+				}}),
+				Icon("key-round", 16),
+				Text(label),
+			))
+		}
+		formContent = append(formContent, Div(
+			Apply(Attr{"class": "space-y-2"}),
+			Fragment(oidcButtons...),
+		))
+	}
+
+	// Divider between OIDC and local auth
+	if hasOIDC && hasLocal {
+		formContent = append(formContent, Div(
+			Apply(Attr{"class": "flex items-center gap-3 my-6"}),
+			Div(Apply(Attr{"class": "flex-1 h-px bg-line-1"})),
+			Span(Apply(Attr{"class": "text-xs text-ink-3 uppercase tracking-wider"}), Text("or")),
+			Div(Apply(Attr{"class": "flex-1 h-px bg-line-1"})),
+		))
+	}
+
+	// Local auth form
+	if hasLocal {
+		formContent = append(formContent,
+			Div(
+				Apply(Attr{"class": "space-y-1"}),
+				ErrorAlert(errMsg),
+				FormField("Username", "text", "admin", username, func(v string) { setUsername(v) }),
+				FormField("Password", "password", "", password, func(v string) { setPassword(v) }),
+			),
+			Button(
+				Apply(Attr{"class": "w-full mt-6 px-4 py-3 text-sm font-semibold rounded-lg border border-wg-600/50 text-wg-400 bg-wg-600/5 hover:bg-wg-600/15 hover:border-wg-600/70 active:bg-wg-600/20 transition-all duration-100"}),
+				Apply(On{"click": func() { doLogin() }}),
+				Text("Sign In"),
+			),
+		)
+	}
+
+	// Subtitle text
+	subtitle := "Enter your credentials to continue"
+	if hasOIDC && !hasLocal {
+		subtitle = "Use your SSO provider to continue"
+	} else if hasOIDC && hasLocal {
+		subtitle = "Choose a sign-in method"
+	}
 
 	return Div(
 		Apply(Attr{"class": "flex min-h-screen bg-surface-0"}),
@@ -104,22 +169,11 @@ func LoginView() loom.Node {
 				Div(
 					Apply(Attr{"class": "mb-8"}),
 					H2(Apply(Attr{"class": "text-2xl font-bold text-ink-1 tracking-tight"}), Text("Sign in")),
-					P(Apply(Attr{"class": "text-ink-3 text-sm mt-2"}), Text("Enter your credentials to continue")),
+					P(Apply(Attr{"class": "text-ink-3 text-sm mt-2"}), Text(subtitle)),
 				),
 
-				// Form
-				Div(
-					Apply(Attr{"class": "space-y-1"}),
-					ErrorAlert(errMsg),
-					FormField("Username", "text", "admin", username, func(v string) { setUsername(v) }),
-					FormField("Password", "password", "", password, func(v string) { setPassword(v) }),
-				),
-
-				Button(
-					Apply(Attr{"class": "w-full mt-6 px-4 py-3 text-sm font-semibold rounded-lg border border-wg-600/50 text-wg-400 bg-wg-600/5 hover:bg-wg-600/15 hover:border-wg-600/70 active:bg-wg-600/20 transition-all duration-100"}),
-					Apply(On{"click": func() { doLogin() }}),
-					Text("Sign In"),
-				),
+				// Form content (OIDC buttons + divider + local form)
+				Fragment(formContent...),
 			),
 		),
 	)

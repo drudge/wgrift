@@ -79,9 +79,9 @@ func UsersView() loom.Node {
 				}
 
 				// Action buttons
-				userActions := Div(
-					Apply(Attr{"class": "flex items-center gap-0.5"}),
-					IconBtn("settings", "Change password", func() {
+				var passwordBtn loom.Node
+				if u.OIDCProvider == "" {
+					passwordBtn = IconBtn("settings", "Change password", func() {
 						usersShowForm = false
 						if usersPasswordUserID == u.ID {
 							usersPasswordUserID = ""
@@ -89,13 +89,36 @@ func UsersView() loom.Node {
 							usersPasswordUserID = u.ID
 						}
 						refreshRoute()
-					}),
+					})
+				} else if u.OIDCIssuer != "" {
+					issuerURL := u.OIDCIssuer
+					passwordBtn = Elem("a",
+						Apply(Attr{
+							"class":  "w-8 h-8 rounded-md flex items-center justify-center text-ink-4 hover:text-ink-1 hover:bg-surface-2 transition-all duration-100",
+							"title":  "Open identity provider",
+							"href":   issuerURL,
+							"target": "_blank",
+							"rel":    "noopener noreferrer",
+						}),
+						Icon("external-link", 15),
+					)
+				} else {
+					passwordBtn = Span()
+				}
+
+				userActions := Div(
+					Apply(Attr{"class": "flex items-center gap-0.5"}),
+					passwordBtn,
 					func() loom.Node {
 						if currentUser() != nil && currentUser().ID == u.ID {
 							return Span()
 						}
+						deleteLabel := fmt.Sprintf("Delete user %s? This cannot be undone.", u.Username)
+						if u.OIDCProvider != "" {
+							deleteLabel = fmt.Sprintf("Remove SSO user %s? They will be re-created on next SSO login.", u.Username)
+						}
 						return IconBtnDanger("trash-2", "Delete user", func() {
-							ConfirmAction(fmt.Sprintf("Delete user %s? This cannot be undone.", u.Username), func() {
+							ConfirmAction(deleteLabel, func() {
 								go func() {
 									apiFetch("DELETE", fmt.Sprintf("/api/v1/users/%s", u.ID), nil, nil)
 									usersPasswordUserID = ""
@@ -125,6 +148,12 @@ func UsersView() loom.Node {
 									Apply(Attr{"class": "flex items-center gap-2"}),
 									Span(Apply(Attr{"class": "text-sm font-semibold text-ink-1"}), Text(u.Username)),
 									Badge(u.Role, roleColor),
+									func() loom.Node {
+										if u.OIDCProvider != "" {
+											return Badge("SSO: "+u.OIDCProvider, "amber")
+										}
+										return Span()
+									}(),
 								),
 								func() loom.Node {
 									if u.DisplayName != "" {
