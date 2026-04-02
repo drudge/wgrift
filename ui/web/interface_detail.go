@@ -282,6 +282,7 @@ func interfaceEditForm(ifaceID string, iface interfaceData) loom.Node {
 	mtu, setMTU := Signal(strconv.Itoa(iface.MTU))
 	endpoint, setEndpoint := Signal(iface.Endpoint)
 	errMsg, setErrMsg := Signal("")
+	FocusInput(`input[placeholder="10.100.0.1/24"]`)
 
 	doSave := func() {
 		setErrMsg("")
@@ -377,6 +378,7 @@ func peerSetKeyForm(ifaceID, peerID, peerName string) loom.Node {
 	privKey, setPrivKey := Signal("")
 	errMsg, setErrMsg := Signal("")
 	success, setSuccess := Signal(false)
+	FocusInput(`input[placeholder="base64-encoded WireGuard private key"]`)
 
 	doSet := func() {
 		setErrMsg("")

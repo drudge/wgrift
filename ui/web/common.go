@@ -159,6 +159,16 @@ func FormField(label, inputType, placeholder string, value Accessor[string], onI
 	)
 }
 
+// FocusInput focuses the first input matching the CSS selector after render.
+func FocusInput(selector string) {
+	js.Global().Call("setTimeout", js.FuncOf(func(this js.Value, args []js.Value) any {
+		if el := js.Global().Get("document").Call("querySelector", selector); el.Truthy() {
+			el.Call("focus")
+		}
+		return nil
+	}), 100)
+}
+
 // FormatBytes formats bytes to human-readable.
 func FormatBytes(b int64) string {
 	const (

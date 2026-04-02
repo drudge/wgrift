@@ -16,11 +16,7 @@ func LoginView() loom.Node {
 	errMsg, setErrMsg := Signal("")
 	loading, setLoading := Signal(false)
 
-	OnRenderSettled(func() {
-		if el := js.Global().Get("document").Call("querySelector", "input[type=text]"); el.Truthy() {
-			el.Call("focus")
-		}
-	})
+	FocusInput("input[type=text]")
 
 	var doLogin func()
 	doLogin = func() {
