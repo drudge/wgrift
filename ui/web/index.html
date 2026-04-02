@@ -4,55 +4,114 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>wgRift</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     fontFamily: {
-                        mono: ['JetBrains Mono', 'Fira Code', 'Cascadia Code', 'ui-monospace', 'SFMono-Regular', 'monospace'],
-                    }
-                }
-            }
+                        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+                    },
+                    colors: {
+                        wg: {
+                            400: '#f87171',
+                            500: '#ef4444',
+                            600: '#dc2626',
+                            700: '#b91c1c',
+                            800: '#991b1b',
+                            950: '#88171A',
+                        },
+                        surface: {
+                            0: '#0c0c10',
+                            1: '#161620',
+                            2: '#1e1e2a',
+                            3: '#282834',
+                            4: '#34343f',
+                        },
+                        ink: {
+                            1: '#f0f0f5',
+                            2: '#b4b4c8',
+                            3: '#8888a0',
+                            4: '#606078',
+                        },
+                        line: {
+                            1: 'rgba(255,255,255,0.10)',
+                            2: 'rgba(255,255,255,0.06)',
+                            3: 'rgba(255,255,255,0.20)',
+                        },
+                    },
+                },
+            },
         }
     </script>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-        }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+
+        /* Scrollbar — near-invisible */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 999px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.10); }
+
+        /* Animations */
         @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes pulse-ring {
-            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
-            70% { box-shadow: 0 0 0 4px rgba(16, 185, 129, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
         }
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.45); }
+            70% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+
         .spinner {
-            width: 20px; height: 20px;
-            border: 2px solid #e5e7eb;
-            border-top-color: #0d9488;
+            width: 28px; height: 28px;
+            border: 2px solid rgba(255,255,255,0.06);
+            border-top-color: #dc2626;
             border-radius: 50%;
-            animation: spin 0.6s linear infinite;
+            animation: spin 0.7s linear infinite;
         }
         .status-pulse { animation: pulse-ring 2s ease-out infinite; }
+
+        /* Modal */
         @keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes modalScaleIn { from { opacity: 0; transform: scale(0.95) translateY(4px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        @keyframes modalScaleIn { from { opacity: 0; transform: scale(0.96) translateY(6px); } to { opacity: 1; transform: scale(1) translateY(0); } }
         .animate-fade-in { animation: modalFadeIn 0.15s ease-out; }
-        .animate-scale-in { animation: modalScaleIn 0.15s ease-out; }
-        #app > div { animation: fadeIn 0.15s ease-out; }
-        #loading { transition: opacity 0.2s ease-out; }
+        .animate-scale-in { animation: modalScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+
+        /* Toast */
+        @keyframes toastSlideUp {
+            from { opacity: 0; transform: translate(-50%, 10px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
+        }
+        .animate-toast { animation: toastSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+
+        /* Page enter */
+        #app > div { animation: fadeSlideIn 0.25s ease-out; }
+
+        /* Loading screen */
+        #loading { transition: opacity 0.3s ease-out; }
         #loading.fade-out { opacity: 0; }
+
+        /* Inset inputs */
+        input:not([type=checkbox]), textarea, select {
+            background-color: #0c0c10 !important;
+        }
+        input:not([type=checkbox]):focus, textarea:focus, select:focus {
+            background-color: #161620 !important;
+        }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-700 antialiased">
-    <div id="loading" class="fixed inset-0 flex items-center justify-center bg-white z-50">
-        <div class="flex flex-col items-center gap-4">
-            <div class="text-2xl font-semibold tracking-tight">
-                <span class="text-teal-600">wg</span><span class="text-gray-900">Rift</span>
+<body class="bg-surface-0 text-ink-2 antialiased">
+    <div id="loading" class="fixed inset-0 flex items-center justify-center bg-surface-0 z-50">
+        <div class="flex flex-col items-center gap-8">
+            <div class="text-3xl font-black tracking-tight">
+                <span class="text-wg-500">wg</span><span class="text-ink-1">Rift</span>
             </div>
             <div class="spinner"></div>
         </div>
@@ -69,7 +128,7 @@
             .catch((err) => {
                 console.error("WASM load error:", err);
                 document.getElementById("app").innerHTML =
-                    '<div class="flex items-center justify-center h-screen text-red-600">Failed to load wgRift</div>';
+                    '<div class="flex items-center justify-center h-screen text-wg-500">Failed to load wgRift</div>';
             });
     </script>
 </body>

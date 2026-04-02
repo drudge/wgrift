@@ -187,11 +187,11 @@ func (s *SQLiteStore) CreatePeer(peer *models.Peer) error {
 	peer.UpdatedAt = now
 
 	_, err := s.db.Exec(`
-		INSERT INTO peers (id, interface_id, name, public_key, private_key_encrypted, preshared_key_encrypted, address, allowed_ips, client_allowed_ips, endpoint, persistent_keepalive, enabled, expires_at, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO peers (id, interface_id, name, public_key, private_key_encrypted, preshared_key_encrypted, address, allowed_ips, client_allowed_ips, dns, endpoint, persistent_keepalive, enabled, expires_at, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		peer.ID, peer.InterfaceID, peer.Name, peer.PublicKey,
 		peer.PrivateKeyEncrypted, nullString(peer.PresharedKeyEncrypted),
-		peer.Address, peer.AllowedIPs, peer.ClientAllowedIPs, peer.Endpoint, peer.PersistentKeepalive,
+		peer.Address, peer.AllowedIPs, peer.ClientAllowedIPs, peer.DNS, peer.Endpoint, peer.PersistentKeepalive,
 		peer.Enabled, nullTime(peer.ExpiresAt),
 		peer.CreatedAt, peer.UpdatedAt,
 	)
@@ -207,11 +207,11 @@ func (s *SQLiteStore) GetPeer(id string) (*models.Peer, error) {
 	var expiresAt, lastHandshake sql.NullTime
 
 	err := s.db.QueryRow(`
-		SELECT id, interface_id, name, public_key, private_key_encrypted, preshared_key_encrypted, address, allowed_ips, client_allowed_ips, endpoint, persistent_keepalive, enabled, expires_at, last_handshake, transfer_rx, transfer_tx, created_at, updated_at
+		SELECT id, interface_id, name, public_key, private_key_encrypted, preshared_key_encrypted, address, allowed_ips, client_allowed_ips, dns, endpoint, persistent_keepalive, enabled, expires_at, last_handshake, transfer_rx, transfer_tx, created_at, updated_at
 		FROM peers WHERE id = ?`, id,
 	).Scan(
 		&peer.ID, &peer.InterfaceID, &peer.Name, &peer.PublicKey,
-		&peer.PrivateKeyEncrypted, &psk, &peer.Address, &peer.AllowedIPs, &peer.ClientAllowedIPs, &endpoint,
+		&peer.PrivateKeyEncrypted, &psk, &peer.Address, &peer.AllowedIPs, &peer.ClientAllowedIPs, &peer.DNS, &endpoint,
 		&peer.PersistentKeepalive, &peer.Enabled,
 		&expiresAt, &lastHandshake,
 		&peer.TransferRx, &peer.TransferTx,
@@ -242,7 +242,7 @@ func (s *SQLiteStore) GetPeer(id string) (*models.Peer, error) {
 
 func (s *SQLiteStore) ListPeers(interfaceID string) ([]models.Peer, error) {
 	rows, err := s.db.Query(`
-		SELECT id, interface_id, name, public_key, private_key_encrypted, preshared_key_encrypted, address, allowed_ips, client_allowed_ips, endpoint, persistent_keepalive, enabled, expires_at, last_handshake, transfer_rx, transfer_tx, created_at, updated_at
+		SELECT id, interface_id, name, public_key, private_key_encrypted, preshared_key_encrypted, address, allowed_ips, client_allowed_ips, dns, endpoint, persistent_keepalive, enabled, expires_at, last_handshake, transfer_rx, transfer_tx, created_at, updated_at
 		FROM peers WHERE interface_id = ? ORDER BY created_at`, interfaceID)
 	if err != nil {
 		return nil, fmt.Errorf("querying peers: %w", err)
@@ -254,7 +254,7 @@ func (s *SQLiteStore) ListPeers(interfaceID string) ([]models.Peer, error) {
 
 func (s *SQLiteStore) ListAllPeers() ([]models.Peer, error) {
 	rows, err := s.db.Query(`
-		SELECT id, interface_id, name, public_key, private_key_encrypted, preshared_key_encrypted, address, allowed_ips, client_allowed_ips, endpoint, persistent_keepalive, enabled, expires_at, last_handshake, transfer_rx, transfer_tx, created_at, updated_at
+		SELECT id, interface_id, name, public_key, private_key_encrypted, preshared_key_encrypted, address, allowed_ips, client_allowed_ips, dns, endpoint, persistent_keepalive, enabled, expires_at, last_handshake, transfer_rx, transfer_tx, created_at, updated_at
 		FROM peers ORDER BY created_at`)
 	if err != nil {
 		return nil, fmt.Errorf("querying all peers: %w", err)
@@ -267,11 +267,11 @@ func (s *SQLiteStore) ListAllPeers() ([]models.Peer, error) {
 func (s *SQLiteStore) UpdatePeer(peer *models.Peer) error {
 	peer.UpdatedAt = time.Now().UTC()
 	_, err := s.db.Exec(`
-		UPDATE peers SET interface_id=?, name=?, public_key=?, private_key_encrypted=?, preshared_key_encrypted=?, address=?, allowed_ips=?, client_allowed_ips=?, endpoint=?, persistent_keepalive=?, enabled=?, expires_at=?, last_handshake=?, transfer_rx=?, transfer_tx=?, updated_at=?
+		UPDATE peers SET interface_id=?, name=?, public_key=?, private_key_encrypted=?, preshared_key_encrypted=?, address=?, allowed_ips=?, client_allowed_ips=?, dns=?, endpoint=?, persistent_keepalive=?, enabled=?, expires_at=?, last_handshake=?, transfer_rx=?, transfer_tx=?, updated_at=?
 		WHERE id=?`,
 		peer.InterfaceID, peer.Name, peer.PublicKey,
 		peer.PrivateKeyEncrypted, nullString(peer.PresharedKeyEncrypted),
-		peer.Address, peer.AllowedIPs, peer.ClientAllowedIPs, peer.Endpoint, peer.PersistentKeepalive,
+		peer.Address, peer.AllowedIPs, peer.ClientAllowedIPs, peer.DNS, peer.Endpoint, peer.PersistentKeepalive,
 		peer.Enabled, nullTime(peer.ExpiresAt), nullTime(peer.LastHandshake),
 		peer.TransferRx, peer.TransferTx, peer.UpdatedAt,
 		peer.ID,
@@ -301,7 +301,7 @@ func scanPeers(rows *sql.Rows) ([]models.Peer, error) {
 
 		if err := rows.Scan(
 			&peer.ID, &peer.InterfaceID, &peer.Name, &peer.PublicKey,
-			&peer.PrivateKeyEncrypted, &psk, &peer.Address, &peer.AllowedIPs, &peer.ClientAllowedIPs, &endpoint,
+			&peer.PrivateKeyEncrypted, &psk, &peer.Address, &peer.AllowedIPs, &peer.ClientAllowedIPs, &peer.DNS, &endpoint,
 			&peer.PersistentKeepalive, &peer.Enabled,
 			&expiresAt, &lastHandshake,
 			&peer.TransferRx, &peer.TransferTx,

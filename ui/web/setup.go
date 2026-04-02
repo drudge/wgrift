@@ -52,7 +52,6 @@ func SetupView() loom.Node {
 
 			var session sessionData
 			if err := unmarshalData(resp.Data, &session); err == nil {
-				// Reload page — session cookie is set, checkSession will authenticate
 				js.Global().Get("window").Get("location").Call("reload")
 				return
 			}
@@ -61,31 +60,59 @@ func SetupView() loom.Node {
 	}
 
 	return Div(
-		Apply(Attr{"class": "flex items-center justify-center min-h-screen bg-gray-50"}),
+		Apply(Attr{"class": "flex min-h-screen bg-surface-0"}),
+
+		// Left brand panel
 		Div(
-			Apply(Attr{"class": "w-full max-w-sm"}),
-
+			Apply(Attr{"class": "hidden md:flex w-[45%] bg-surface-1 border-r border-line-1 relative overflow-hidden flex-col items-center justify-center"}),
+			Div(Apply(Attr{"class": "absolute w-64 h-64 bg-wg-600/8 rounded-full blur-3xl"})),
 			Div(
-				Apply(Attr{"class": "text-center mb-8"}),
+				Apply(Attr{"class": "relative z-10 text-center"}),
 				Div(
-					Apply(Attr{"class": "inline-flex items-center gap-1 text-3xl font-bold"}),
-					Span(Apply(Attr{"class": "text-teal-400"}), Text("wg")),
-					Span(Apply(Attr{"class": "text-gray-700"}), Text("Rift")),
+					Apply(Attr{"class": "text-5xl font-extrabold tracking-tight"}),
+					Span(Apply(Attr{"class": "text-wg-500"}), Text("wg")),
+					Span(Apply(Attr{"class": "text-ink-1"}), Text("Rift")),
 				),
-				P(Apply(Attr{"class": "text-gray-400 text-sm mt-2"}), Text("Create your admin account")),
+				P(Apply(Attr{"class": "text-ink-3 text-sm mt-4 tracking-wide"}), Text("WireGuard VPN Management")),
 			),
+			Div(Apply(Attr{"class": "absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-wg-600/40 to-transparent"})),
+		),
 
+		// Right form panel
+		Div(
+			Apply(Attr{"class": "flex-1 flex items-center justify-center px-6"}),
 			Div(
-				Apply(Attr{"class": "bg-white border border-gray-200 rounded-lg p-6"}),
+				Apply(Attr{"class": "w-full max-w-sm"}),
 
-				ErrorAlert(errMsg),
+				// Mobile-only brand
+				Div(
+					Apply(Attr{"class": "md:hidden text-center mb-10"}),
+					Div(
+						Apply(Attr{"class": "text-4xl font-extrabold tracking-tight"}),
+						Span(Apply(Attr{"class": "text-wg-500"}), Text("wg")),
+						Span(Apply(Attr{"class": "text-ink-1"}), Text("Rift")),
+					),
+					P(Apply(Attr{"class": "text-ink-3 text-sm mt-3"}), Text("WireGuard VPN Management")),
+				),
 
-				FormField("Username", "text", "admin", username, func(v string) { setUsername(v) }),
-				FormField("Password", "password", "min 16 characters", password, func(v string) { setPassword(v) }),
-				FormField("Confirm Password", "password", "", confirm, func(v string) { setConfirm(v) }),
+				// Setup heading
+				Div(
+					Apply(Attr{"class": "mb-8"}),
+					H2(Apply(Attr{"class": "text-2xl font-bold text-ink-1 tracking-tight"}), Text("Welcome")),
+					P(Apply(Attr{"class": "text-ink-3 text-sm mt-2"}), Text("Create your admin account to get started")),
+				),
+
+				// Form
+				Div(
+					Apply(Attr{"class": "space-y-1"}),
+					ErrorAlert(errMsg),
+					FormField("Username", "text", "admin", username, func(v string) { setUsername(v) }),
+					FormField("Password", "password", "min 16 characters", password, func(v string) { setPassword(v) }),
+					FormField("Confirm Password", "password", "", confirm, func(v string) { setConfirm(v) }),
+				),
 
 				Button(
-					Apply(Attr{"class": "w-full px-4 py-2.5 text-sm font-medium rounded-md bg-teal-600 border border-teal-600 text-white hover:bg-teal-700 transition-colors"}),
+					Apply(Attr{"class": "w-full mt-6 px-4 py-3 text-sm font-semibold rounded-lg border border-wg-600/50 text-wg-400 bg-wg-600/5 hover:bg-wg-600/15 hover:border-wg-600/70 active:bg-wg-600/20 transition-all duration-100"}),
 					Apply(On{"click": func() { doSetup() }}),
 					Bind(func() loom.Node {
 						if loading() {

@@ -16,6 +16,7 @@ import (
 
 // Package-level state for edit modes (survives refreshRoute re-mount)
 var (
+	detailCurrentID     string
 	detailEditInterface bool
 	detailEditPeerID    string
 	detailSetKeyPeerID  string
@@ -23,6 +24,14 @@ var (
 )
 
 func InterfaceDetailView(ifaceID string) loom.Node {
+	// Reset edit state only when navigating to a different interface
+	if ifaceID != detailCurrentID {
+		detailEditInterface = false
+		detailEditPeerID = ""
+		detailSetKeyPeerID = ""
+		detailCurrentID = ifaceID
+	}
+
 	status, setStatus := Signal[*interfaceStatusData](nil)
 	loading, setLoading := Signal(true)
 
@@ -57,13 +66,14 @@ func InterfaceDetailView(ifaceID string) loom.Node {
 	})
 
 	return Div(
-		// Header with breadcrumb
+		// Breadcrumb row — everything on one line on desktop, wraps on mobile
 		Div(
-			Apply(Attr{"class": "flex items-center justify-between mb-6"}),
+			Apply(Attr{"class": "flex flex-wrap items-center justify-between gap-3 mb-6"}),
+			// Left: breadcrumb
 			Div(
-				Apply(Attr{"class": "flex items-center gap-3"}),
+				Apply(Attr{"class": "flex items-center gap-2"}),
 				Button(
-					Apply(Attr{"class": "flex items-center gap-1 text-gray-400 hover:text-gray-700 text-sm transition-colors"}),
+					Apply(Attr{"class": "flex items-center gap-1 text-ink-3 hover:text-wg-400 text-sm transition-colors"}),
 					Apply(On{"click": func() {
 						detailEditInterface = false
 						detailEditPeerID = ""
@@ -73,11 +83,12 @@ func InterfaceDetailView(ifaceID string) loom.Node {
 					Icon("chevron-left", 16),
 					Text("Interfaces"),
 				),
-				Span(Apply(Attr{"class": "text-gray-300"}), Text("/")),
-				Span(Apply(Attr{"class": "font-mono text-lg font-semibold text-gray-900"}), Text(ifaceID)),
+				Span(Apply(Attr{"class": "text-ink-4/40"}), Text("/")),
+				Span(Apply(Attr{"class": "font-mono text-lg font-bold text-ink-1 tracking-tight"}), Text(ifaceID)),
 			),
+			// Right: actions — wrap on mobile
 			Div(
-				Apply(Attr{"class": "flex gap-2"}),
+				Apply(Attr{"class": "flex items-center gap-2"}),
 				Btn("Add Peer", "primary", func() {
 					detailEditInterface = false
 					if detailEditPeerID == "__add__" {
@@ -123,77 +134,87 @@ func InterfaceDetailView(ifaceID string) loom.Node {
 }
 
 func interfaceDetailContent(ifaceID string, s *interfaceStatusData, status Accessor[*interfaceStatusData]) loom.Node {
+	// Status bar stripe and indicator classes based on running state
+	stripeClass := "h-[2px] bg-ink-4/30"
+	dotClass := "inline-block w-2.5 h-2.5 rounded-full bg-ink-4"
+	labelClass := "text-sm text-ink-3 font-medium"
+	labelText := "Stopped"
+	if s.Running {
+		stripeClass = "h-[2px] bg-green-500"
+		dotClass = "inline-block w-2.5 h-2.5 rounded-full bg-green-500 status-pulse"
+		labelClass = "text-sm text-green-400 font-medium"
+		labelText = "Running"
+	}
+
 	return Div(
 		// Status bar
 		Div(
-			Apply(Attr{"class": "flex items-center justify-between gap-3 mb-6 bg-white border border-gray-200 rounded-lg px-4 py-3"}),
+			Apply(Attr{"class": "bg-surface-1 rounded-lg overflow-hidden mb-6 border border-line-1"}),
+			// Gradient stripe at top
+			Div(Apply(Attr{"class": stripeClass})),
 			Div(
-				Apply(Attr{"class": "flex items-center gap-2"}),
-				func() loom.Node {
-					if s.Running {
-						return Fragment(
-							Span(Apply(Attr{"class": "inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 status-pulse"})),
-							Span(Apply(Attr{"class": "text-sm text-emerald-600 font-medium"}), Text("Running")),
-						)
-					}
-					return Fragment(
-						Span(Apply(Attr{"class": "inline-block w-2.5 h-2.5 rounded-full bg-gray-300"})),
-						Span(Apply(Attr{"class": "text-sm text-gray-400 font-medium"}), Text("Stopped")),
-					)
-				}(),
-			),
-			Div(
-				Apply(Attr{"class": "flex flex-wrap gap-1.5"}),
-				func() loom.Node {
-					if s.Running {
-						return Fragment(
-							Btn("Restart", "ghost", func() {
-								go func() {
-									apiFetch("POST", fmt.Sprintf("/api/v1/interfaces/%s/restart", ifaceID), nil, nil)
-									refreshRoute()
-								}()
-							}),
-							Btn("Stop", "danger", func() {
-								go func() {
-									apiFetch("POST", fmt.Sprintf("/api/v1/interfaces/%s/stop", ifaceID), nil, nil)
-									refreshRoute()
-								}()
-							}),
-						)
-					}
-					return Btn("Start", "primary", func() {
+				Apply(Attr{"class": "px-7 py-5 flex items-center justify-between"}),
+				// Left: status indicator + text
+				Div(
+					Apply(Attr{"class": "flex items-center gap-3"}),
+					Span(Apply(Attr{"class": dotClass})),
+					Span(Apply(Attr{"class": labelClass}), Text(labelText)),
+				),
+				// Right: action buttons
+				Div(
+					Apply(Attr{"class": "flex flex-wrap items-center gap-2"}),
+					func() loom.Node {
+						if s.Running {
+							return Fragment(
+								Btn("Restart", "ghost", func() {
+									go func() {
+										apiFetch("POST", fmt.Sprintf("/api/v1/interfaces/%s/restart", ifaceID), nil, nil)
+										refreshRoute()
+									}()
+								}),
+								Btn("Stop", "danger", func() {
+									go func() {
+										apiFetch("POST", fmt.Sprintf("/api/v1/interfaces/%s/stop", ifaceID), nil, nil)
+										refreshRoute()
+									}()
+								}),
+							)
+						}
+						return Btn("Start", "primary", func() {
+							go func() {
+								apiFetch("POST", fmt.Sprintf("/api/v1/interfaces/%s/start", ifaceID), nil, nil)
+								refreshRoute()
+							}()
+						})
+					}(),
+					Btn("Sync", "ghost", func() {
 						go func() {
-							apiFetch("POST", fmt.Sprintf("/api/v1/interfaces/%s/start", ifaceID), nil, nil)
+							apiFetch("POST", fmt.Sprintf("/api/v1/interfaces/%s/sync", ifaceID), nil, nil)
+							detailEditInterface = false
+							detailEditPeerID = ""
 							refreshRoute()
 						}()
-					})
-				}(),
-				Btn("Sync", "ghost", func() {
-					go func() {
-						apiFetch("POST", fmt.Sprintf("/api/v1/interfaces/%s/sync", ifaceID), nil, nil)
-						detailEditInterface = false
-						detailEditPeerID = ""
-						refreshRoute()
-					}()
-				}),
+					}),
+				),
 			),
 		),
 
 		// Interface settings card
-		Card(
+		Div(
+			Apply(Attr{"class": "bg-surface-1 border border-line-1 rounded-lg p-6"}),
 			Div(
-				Apply(Attr{"class": "flex items-center justify-between mb-3"}),
-				Span(Apply(Attr{"class": "text-xs text-gray-400 uppercase tracking-widest"}), Text("Interface Settings")),
-				Btn(func() string {
-					if detailEditInterface {
-						return "Cancel"
+				Apply(Attr{"class": "flex items-center justify-between mb-4"}),
+				Span(Apply(Attr{"class": "text-[11px] font-semibold text-ink-3 uppercase tracking-[0.15em]"}), Text("Interface Settings")),
+				func() loom.Node {
+					if !detailEditInterface {
+						return Btn("Edit", "ghost", func() {
+							detailEditInterface = true
+							detailEditPeerID = ""
+							refreshRoute()
+						})
 					}
-					return "Edit"
-				}(), "ghost", func() {
-					detailEditInterface = !detailEditInterface
-					detailEditPeerID = ""
-					refreshRoute()
-				}),
+					return Span()
+				}(),
 			),
 			func() loom.Node {
 				if detailEditInterface {
@@ -226,7 +247,7 @@ func interfaceDetailContent(ifaceID string, s *interfaceStatusData, status Acces
 					}
 				}
 				return Div(
-					Apply(Attr{"class": "mt-4"}),
+					Apply(Attr{"class": "mt-6"}),
 					PeerForm(ifaceID, s.Interface.Address, usedAddrs, func() {
 						detailEditPeerID = ""
 						refreshRoute()
@@ -238,13 +259,17 @@ func interfaceDetailContent(ifaceID string, s *interfaceStatusData, status Acces
 
 		// Peers section
 		Div(
-			Apply(Attr{"class": "mt-6"}),
-			CardHeader("Peers"),
+			Apply(Attr{"class": "mt-8"}),
+			Div(
+				Apply(Attr{"class": "flex items-center justify-between mb-5"}),
+				H3(Apply(Attr{"class": "text-xs font-semibold text-ink-4 uppercase tracking-[0.2em]"}), Text("Peers")),
+				Span(Apply(Attr{"class": "text-xs font-mono text-ink-4"}), Text(fmt.Sprintf("%d total", len(s.Peers)))),
+			),
 			func() loom.Node {
 				if len(s.Peers) == 0 {
 					return EmptyState("No peers configured")
 				}
-				return peerTable(ifaceID, s.Peers)
+				return peerCardList(ifaceID, s.Peers)
 			}(),
 		),
 	)
@@ -303,27 +328,31 @@ func interfaceEditForm(ifaceID string, iface interfaceData) loom.Node {
 			FormField("MTU", "number", "1420", mtu, func(v string) { setMTU(v) }),
 		),
 		Div(
-			Apply(Attr{"class": "flex gap-2 mt-2"}),
+			Apply(Attr{"class": "flex items-center gap-2 mt-2"}),
 			Btn("Save", "primary", doSave),
+			Btn("Cancel", "ghost", func() {
+				detailEditInterface = false
+				refreshRoute()
+			}),
 		),
 	)
 }
 
 func infoItem(label, value string) loom.Node {
 	return Div(
-		Div(Apply(Attr{"class": "text-[11px] text-gray-400 uppercase tracking-widest mb-1"}), Text(label)),
-		Div(Apply(Attr{"class": "font-mono text-gray-900"}), Text(value)),
+		Div(Apply(Attr{"class": "text-[11px] text-ink-3 uppercase tracking-widest font-medium mb-1.5"}), Text(label)),
+		Div(Apply(Attr{"class": "font-mono text-ink-1 text-sm"}), Text(value)),
 	)
 }
 
 func formatAvailableIPs(address string, peerCount int) string {
 	parts := strings.SplitN(address, "/", 2)
 	if len(parts) != 2 {
-		return "—"
+		return "\u2014"
 	}
 	prefix, err := strconv.Atoi(parts[1])
 	if err != nil || prefix < 1 || prefix > 30 {
-		return "—"
+		return "\u2014"
 	}
 	// Total usable host IPs: 2^(32-prefix) - 2 (network + broadcast) - 1 (gateway)
 	total := (1 << (32 - prefix)) - 3
@@ -377,18 +406,18 @@ func peerSetKeyForm(ifaceID, peerID, peerName string) loom.Node {
 
 	return Div(
 		Div(
-			Apply(Attr{"class": "text-sm font-medium text-gray-700 mb-3"}),
+			Apply(Attr{"class": "text-sm font-medium text-ink-1 mb-3"}),
 			Text(fmt.Sprintf("Set private key for %s", peerName)),
 		),
 		Div(
-			Apply(Attr{"class": "text-xs text-gray-400 mb-3"}),
+			Apply(Attr{"class": "text-xs text-ink-3 mb-3"}),
 			Text("Paste the peer's WireGuard private key to enable config and QR code generation."),
 		),
 		ErrorAlert(errMsg),
 		Bind(func() loom.Node {
 			if success() {
 				return Div(
-					Apply(Attr{"class": "mb-3 p-3 bg-emerald-50 border border-emerald-200 rounded-md text-emerald-700 text-sm"}),
+					Apply(Attr{"class": "mb-3 p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-green-400 text-sm"}),
 					Text("Private key set successfully"),
 				)
 			}
@@ -439,7 +468,7 @@ func peerActions(ifaceID string, ps peerStatusData) loom.Node {
 		}),
 		func() loom.Node {
 			if ps.Peer.Enabled {
-				return IconBtn("eye-off", "Disable peer", func() {
+				return IconBtn("power-off", "Disable peer", func() {
 					ConfirmAction(fmt.Sprintf("Disable peer %s? The peer will be disconnected immediately.", ps.Peer.Name), func() {
 						go func() {
 							apiFetch("POST", fmt.Sprintf("/api/v1/interfaces/%s/peers/%s/disable", ifaceID, ps.Peer.ID), nil, nil)
@@ -449,7 +478,7 @@ func peerActions(ifaceID string, ps peerStatusData) loom.Node {
 					})
 				})
 			}
-			return IconBtn("eye", "Enable peer", func() {
+			return IconBtn("power", "Enable peer", func() {
 				go func() {
 					apiFetch("POST", fmt.Sprintf("/api/v1/interfaces/%s/peers/%s/enable", ifaceID, ps.Peer.ID), nil, nil)
 					detailEditPeerID = ""
@@ -469,149 +498,60 @@ func peerActions(ifaceID string, ps peerStatusData) loom.Node {
 	)
 }
 
-func peerTable(ifaceID string, peers []peerStatusData) loom.Node {
+// peerCardList renders all peers as card-based rows (replaces the old table+mobile-cards split).
+func peerCardList(ifaceID string, peers []peerStatusData) loom.Node {
 	cards := make([]loom.Node, 0, len(peers))
-	rows := make([]loom.Node, 0, len(peers)*2)
 
 	for _, ps := range peers {
 		ps := ps
 
-		// Mobile card
 		cardChildren := []loom.Node{
-			Apply(Attr{"class": "bg-white border border-gray-200 rounded-lg px-4 py-3"}),
-			// Header: status dot + name + actions
+			Apply(Attr{"class": "bg-surface-1 border border-line-1 rounded-lg px-6 py-4 hover:bg-surface-2/60 transition-colors"}),
+			// Top row: status + name/key + actions
 			Div(
 				Apply(Attr{"class": "flex items-center justify-between"}),
 				Div(
-					Apply(Attr{"class": "flex items-center gap-2 min-w-0"}),
+					Apply(Attr{"class": "flex items-center gap-3 min-w-0"}),
 					StatusDot(ps.Peer.Enabled, ps.Connected),
-					Span(Apply(Attr{"class": "text-sm font-medium text-gray-900 truncate"}), Text(ps.Peer.Name)),
+					Div(
+						Apply(Attr{"class": "min-w-0"}),
+						Div(Apply(Attr{"class": "text-sm font-semibold text-ink-1 truncate"}), Text(ps.Peer.Name)),
+						Div(Apply(Attr{"class": "font-mono text-[11px] text-ink-4 truncate"}), Text(truncateKey(ps.Peer.PublicKey))),
+					),
 				),
 				peerActions(ifaceID, ps),
 			),
-			// Details
+			// Bottom row: address + transfer
 			Div(
-				Apply(Attr{"class": "flex items-center justify-between mt-1.5 text-xs font-mono text-gray-400 pl-[18px]"}),
-				Span(Text(ps.Peer.Address)),
-				Span(Text(fmt.Sprintf("↓%s ↑%s", FormatBytes(ps.TransferRx), FormatBytes(ps.TransferTx)))),
+				Apply(Attr{"class": "flex flex-wrap items-center gap-x-5 gap-y-1 mt-3 pl-[22px] text-xs font-mono text-ink-3"}),
+				Span(Apply(Attr{"class": "text-ink-2"}), Text(ps.Peer.Address)),
+				Span(Text(fmt.Sprintf("↓%s  ↑%s", FormatBytes(ps.TransferRx), FormatBytes(ps.TransferTx)))),
 			),
 		}
-		// Inline edit form below card
+
+		// Inline edit form below card content
 		if detailEditPeerID == ps.Peer.ID {
 			cardChildren = append(cardChildren, Div(
-				Apply(Attr{"class": "mt-3 pt-3 border-t border-gray-100"}),
+				Apply(Attr{"class": "mt-4 pt-4 border-t border-line-1"}),
 				PeerEditForm(ifaceID, ps.Peer, func() {
 					detailEditPeerID = ""
 					refreshRoute()
 				}),
 			))
 		}
+		// Inline set private key form below card content
 		if detailSetKeyPeerID == ps.Peer.ID {
 			cardChildren = append(cardChildren, Div(
-				Apply(Attr{"class": "mt-3 pt-3 border-t border-gray-100"}),
+				Apply(Attr{"class": "mt-4 pt-4 border-t border-line-1"}),
 				peerSetKeyForm(ifaceID, ps.Peer.ID, ps.Peer.Name),
 			))
 		}
-		cards = append(cards, Div(cardChildren...))
 
-		// Desktop table row
-		rows = append(rows, Elem("tr",
-			Apply(Attr{"class": "border-b border-gray-100 hover:bg-gray-50 transition-colors"}),
-			Elem("td", Apply(Attr{"class": "px-4 py-3"}), StatusDot(ps.Peer.Enabled, ps.Connected)),
-			Elem("td", Apply(Attr{"class": "px-4 py-3"}),
-				Div(
-					Div(Apply(Attr{"class": "text-sm font-medium text-gray-900"}), Text(ps.Peer.Name)),
-					Div(Apply(Attr{"class": "font-mono text-[11px] text-gray-400"}), Text(truncateKey(ps.Peer.PublicKey))),
-				),
-			),
-			Elem("td", Apply(Attr{"class": "px-4 py-3 font-mono text-xs text-gray-500"}), Text(ps.Peer.Address)),
-			Elem("td", Apply(Attr{"class": "px-4 py-3 font-mono text-xs text-gray-500"}),
-				func() loom.Node {
-					parts := strings.Split(ps.Peer.AllowedIPs, ",")
-					nodes := make([]loom.Node, 0, len(parts))
-					for _, p := range parts {
-						p = strings.TrimSpace(p)
-						if p != "" {
-							nodes = append(nodes, Div(Text(p)))
-						}
-					}
-					return Div(nodes...)
-				}(),
-			),
-			Elem("td", Apply(Attr{"class": "px-4 py-3 font-mono text-xs text-gray-500"}),
-				func() loom.Node {
-					if ps.Peer.ClientAllowedIPs == "" {
-						return Span(Apply(Attr{"class": "text-gray-300"}), Text("0.0.0.0/0"))
-					}
-					parts := strings.Split(ps.Peer.ClientAllowedIPs, ",")
-					nodes := make([]loom.Node, 0, len(parts))
-					for _, p := range parts {
-						p = strings.TrimSpace(p)
-						if p != "" {
-							nodes = append(nodes, Div(Text(p)))
-						}
-					}
-					return Div(nodes...)
-				}(),
-			),
-			Elem("td", Apply(Attr{"class": "px-4 py-3 font-mono text-xs text-gray-400"}), Text(FormatBytes(ps.TransferRx))),
-			Elem("td", Apply(Attr{"class": "px-4 py-3 font-mono text-xs text-gray-400"}), Text(FormatBytes(ps.TransferTx))),
-			Elem("td", Apply(Attr{"class": "px-4 py-3"}),
-				Div(
-					Apply(Attr{"class": "flex items-center gap-0.5 justify-end"}),
-					peerActions(ifaceID, ps),
-				),
-			),
-		))
-		// Inline edit form row (desktop)
-		if detailEditPeerID == ps.Peer.ID {
-			rows = append(rows, Elem("tr",
-				Apply(Attr{"class": "border-b border-gray-100 bg-gray-50"}),
-				Elem("td", Apply(Attr{"class": "p-4", "colspan": "8"}),
-					PeerEditForm(ifaceID, ps.Peer, func() {
-						detailEditPeerID = ""
-						refreshRoute()
-					}),
-				),
-			))
-		}
-		// Inline set private key form row (desktop)
-		if detailSetKeyPeerID == ps.Peer.ID {
-			rows = append(rows, Elem("tr",
-				Apply(Attr{"class": "border-b border-gray-100 bg-gray-50"}),
-				Elem("td", Apply(Attr{"class": "p-4", "colspan": "8"}),
-					peerSetKeyForm(ifaceID, ps.Peer.ID, ps.Peer.Name),
-				),
-			))
-		}
+		cards = append(cards, Div(cardChildren...))
 	}
 
 	return Div(
-		// Mobile cards
-		Div(
-			Apply(Attr{"class": "md:hidden space-y-3"}),
-			Fragment(cards...),
-		),
-		// Desktop table
-		Div(
-			Apply(Attr{"class": "hidden md:block bg-white border border-gray-200 rounded-lg overflow-hidden"}),
-			Elem("table",
-				Apply(Attr{"class": "w-full text-sm"}),
-				Elem("thead",
-					Elem("tr",
-						Apply(Attr{"class": "border-b border-gray-200 text-left text-[11px] uppercase tracking-widest text-gray-400"}),
-						Elem("th", Apply(Attr{"class": "px-4 py-3 w-8"})),
-						Elem("th", Apply(Attr{"class": "px-4 py-3"}), Text("Name")),
-						Elem("th", Apply(Attr{"class": "px-4 py-3"}), Text("Address")),
-						Elem("th", Apply(Attr{"class": "px-4 py-3"}), Text("Server IPs")),
-						Elem("th", Apply(Attr{"class": "px-4 py-3"}), Text("Client IPs")),
-						Elem("th", Apply(Attr{"class": "px-4 py-3"}), Text("RX")),
-						Elem("th", Apply(Attr{"class": "px-4 py-3"}), Text("TX")),
-						Elem("th", Apply(Attr{"class": "px-4 py-3 text-right"}), Text("Actions")),
-					),
-				),
-				Elem("tbody", rows...),
-			),
-		),
+		Apply(Attr{"class": "space-y-3"}),
+		Fragment(cards...),
 	)
 }

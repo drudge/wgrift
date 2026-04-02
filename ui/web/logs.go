@@ -79,36 +79,33 @@ func LogsView(initialIfaceID string) loom.Node {
 		}()
 	})
 
-	return Div(
-		Div(
-			Apply(Attr{"class": "flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-8"}),
-			H2(Apply(Attr{"class": "text-xl font-semibold text-gray-900"}), Text("Connection Logs")),
+	// Interface selector dropdown
+	ifaceSelector := Show(func() bool { return len(ifaces()) > 0 }, func() loom.Node {
+		ifList := ifaces()
+		opts := make([]loom.Node, 0, len(ifList))
+		for _, iface := range ifList {
+			attrs := Attr{"value": iface.ID}
+			if iface.ID == initialIfaceID || (initialIfaceID == "" && len(opts) == 0) {
+				attrs["selected"] = "selected"
+			}
+			opts = append(opts, Elem("option", Apply(attrs), Text(iface.ID)))
+		}
+		return Elem("select",
+			Apply(Attr{"class": "px-4 py-2 bg-surface-1 border border-line-2 rounded-lg text-sm text-ink-1 focus:outline-none focus:border-wg-600/50 focus:ring-1 focus:ring-wg-600/20 transition-colors"}),
+			Apply(On{"change": func(evt *EventInput) {
+				val := evt.InputValue()
+				setActiveIface(val)
+				setLoading(true)
+				loadLogs(val)
+				startPolling()
+				js.Global().Get("window").Get("history").Call("replaceState", nil, "", "/logs/"+val)
+			}}),
+			Fragment(opts...),
+		)
+	})
 
-			// Interface selector
-			Show(func() bool { return len(ifaces()) > 0 }, func() loom.Node {
-				ifList := ifaces()
-				opts := make([]loom.Node, 0, len(ifList))
-				for _, iface := range ifList {
-					attrs := Attr{"value": iface.ID}
-					if iface.ID == initialIfaceID || (initialIfaceID == "" && len(opts) == 0) {
-						attrs["selected"] = "selected"
-					}
-					opts = append(opts, Elem("option", Apply(attrs), Text(iface.ID)))
-				}
-				return Elem("select",
-					Apply(Attr{"class": "px-3 py-1.5 bg-white border border-gray-300 rounded-md text-sm text-gray-700"}),
-					Apply(On{"change": func(evt *EventInput) {
-						val := evt.InputValue()
-						setActiveIface(val)
-						setLoading(true)
-						loadLogs(val)
-						startPolling()
-						js.Global().Get("window").Get("history").Call("replaceState", nil, "", "/logs/"+val)
-					}}),
-					Fragment(opts...),
-				)
-			}),
-		),
+	return Div(
+		PageHeader("Connection Logs", "Real-time connection activity", ifaceSelector),
 
 		LoadingView(loading),
 		Show(func() bool { return !loading() }, func() loom.Node {
@@ -119,7 +116,6 @@ func LogsView(initialIfaceID string) loom.Node {
 				}
 
 				cards := make([]loom.Node, 0, len(list))
-				rows := make([]loom.Node, 0, len(list))
 				for _, log := range list {
 					log := log
 					eventColor := ""
@@ -131,61 +127,38 @@ func LogsView(initialIfaceID string) loom.Node {
 						peerLabel = log.PeerName
 					}
 
-					// Mobile card
 					cards = append(cards, Div(
-						Apply(Attr{"class": "bg-white border border-gray-200 rounded-lg px-4 py-3"}),
+						Apply(Attr{"class": "bg-surface-1 rounded-lg px-5 py-4"}),
+						// Row: badge + peer info + stats
 						Div(
-							Apply(Attr{"class": "flex items-center justify-between mb-1.5"}),
+							Apply(Attr{"class": "flex items-start gap-3"}),
+							// Badge
+							Div(Apply(Attr{"class": "flex-shrink-0 mt-0.5"}), Badge(log.Event, eventColor)),
+							// Peer info — grows to fill
 							Div(
-								Apply(Attr{"class": "flex items-center gap-2"}),
-								Badge(log.Event, eventColor),
-								Span(Apply(Attr{"class": "text-sm text-gray-700"}), Text(peerLabel)),
+								Apply(Attr{"class": "flex-1 min-w-0"}),
+								Div(Apply(Attr{"class": "text-sm text-ink-1 font-medium"}), Text(peerLabel)),
+								Div(Apply(Attr{"class": "text-[11px] text-ink-4 mt-0.5"}), Text(FormatTimestamp(log.RecordedAt))),
+								// Mobile transfer stats
+								Div(
+									Apply(Attr{"class": "sm:hidden font-mono text-xs text-ink-3 mt-1.5 flex items-center gap-3"}),
+									Span(Text(fmt.Sprintf("↓%s", FormatBytes(log.TransferRx)))),
+									Span(Text(fmt.Sprintf("↑%s", FormatBytes(log.TransferTx)))),
+								),
 							),
-							Span(Apply(Attr{"class": "font-mono text-[11px] text-gray-400"}), Text(fmt.Sprintf("↓%s ↑%s", FormatBytes(log.TransferRx), FormatBytes(log.TransferTx)))),
-						),
-						Div(Apply(Attr{"class": "text-[11px] text-gray-400"}), Text(FormatTimestamp(log.RecordedAt))),
-					))
-
-					// Desktop row
-					rows = append(rows, Elem("tr",
-						Apply(Attr{"class": "border-b border-gray-100"}),
-						Elem("td", Apply(Attr{"class": "px-4 py-2 text-xs text-gray-400"}), Text(FormatTimestamp(log.RecordedAt))),
-						Elem("td", Apply(Attr{"class": "px-4 py-2"}), Badge(log.Event, eventColor)),
-						Elem("td", Apply(Attr{"class": "px-4 py-2"}),
+							// Desktop transfer stats
 							Div(
-								Span(Apply(Attr{"class": "text-sm text-gray-700"}), Text(peerLabel)),
-								Span(Apply(Attr{"class": "ml-2 font-mono text-xs text-gray-400"}), Text(log.PeerID[:8])),
+								Apply(Attr{"class": "hidden sm:flex font-mono text-xs text-ink-3 items-center gap-3 flex-shrink-0"}),
+								Span(Text(fmt.Sprintf("↓%s", FormatBytes(log.TransferRx)))),
+								Span(Text(fmt.Sprintf("↑%s", FormatBytes(log.TransferTx)))),
 							),
 						),
-						Elem("td", Apply(Attr{"class": "px-4 py-2 font-mono text-xs text-gray-400"}), Text(FormatBytes(log.TransferRx))),
-						Elem("td", Apply(Attr{"class": "px-4 py-2 font-mono text-xs text-gray-400"}), Text(FormatBytes(log.TransferTx))),
 					))
 				}
 
 				return Div(
-					// Mobile cards
-					Div(
-						Apply(Attr{"class": "md:hidden space-y-2"}),
-						Fragment(cards...),
-					),
-					// Desktop table
-					Div(
-						Apply(Attr{"class": "hidden md:block bg-white border border-gray-200 rounded-lg overflow-hidden"}),
-						Elem("table",
-							Apply(Attr{"class": "w-full text-sm"}),
-							Elem("thead",
-								Elem("tr",
-									Apply(Attr{"class": "border-b border-gray-200 text-left text-xs uppercase tracking-wider text-gray-400"}),
-									Elem("th", Apply(Attr{"class": "px-4 py-3"}), Text("Time")),
-									Elem("th", Apply(Attr{"class": "px-4 py-3"}), Text("Event")),
-									Elem("th", Apply(Attr{"class": "px-4 py-3"}), Text("Peer")),
-									Elem("th", Apply(Attr{"class": "px-4 py-3"}), Text("RX")),
-									Elem("th", Apply(Attr{"class": "px-4 py-3"}), Text("TX")),
-								),
-							),
-							Elem("tbody", rows...),
-						),
-					),
+					Apply(Attr{"class": "space-y-2"}),
+					Fragment(cards...),
 				)
 			})
 		}),

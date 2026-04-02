@@ -12,6 +12,7 @@ type addPeerRequest struct {
 	Address             string `json:"address"`
 	AllowedIPs          string `json:"allowed_ips"`
 	ClientAllowedIPs    string `json:"client_allowed_ips"`
+	DNS                 string `json:"dns"`
 	Endpoint            string `json:"endpoint"`
 	PersistentKeepalive int    `json:"persistent_keepalive"`
 	PSK                 bool   `json:"psk"`
@@ -47,6 +48,7 @@ func (s *Server) handleAddPeer(w http.ResponseWriter, r *http.Request) {
 		Address:             req.Address,
 		AllowedIPs:          req.AllowedIPs,
 		ClientAllowedIPs:    req.ClientAllowedIPs,
+		DNS:                 req.DNS,
 		Endpoint:            req.Endpoint,
 		PersistentKeepalive: req.PersistentKeepalive,
 	}
@@ -60,12 +62,13 @@ func (s *Server) handleAddPeer(w http.ResponseWriter, r *http.Request) {
 }
 
 type updatePeerRequest struct {
-	Name                string `json:"name"`
-	Address             string `json:"address"`
-	AllowedIPs          string `json:"allowed_ips"`
+	Name                string  `json:"name"`
+	Address             string  `json:"address"`
+	AllowedIPs          string  `json:"allowed_ips"`
 	ClientAllowedIPs    *string `json:"client_allowed_ips"`
-	Endpoint            string `json:"endpoint"`
-	PersistentKeepalive int    `json:"persistent_keepalive"`
+	DNS                 *string `json:"dns"`
+	Endpoint            string  `json:"endpoint"`
+	PersistentKeepalive int     `json:"persistent_keepalive"`
 }
 
 func (s *Server) handleUpdatePeer(w http.ResponseWriter, r *http.Request) {
@@ -98,6 +101,9 @@ func (s *Server) handleUpdatePeer(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.ClientAllowedIPs != nil {
 		peer.ClientAllowedIPs = *req.ClientAllowedIPs
+	}
+	if req.DNS != nil {
+		peer.DNS = *req.DNS
 	}
 	peer.Endpoint = req.Endpoint
 	peer.PersistentKeepalive = req.PersistentKeepalive

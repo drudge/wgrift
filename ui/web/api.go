@@ -124,6 +124,7 @@ type peerData struct {
 	Address             string `json:"address"`
 	AllowedIPs          string `json:"allowed_ips"`
 	ClientAllowedIPs    string `json:"client_allowed_ips"`
+	DNS                 string `json:"dns"`
 	Endpoint            string `json:"endpoint"`
 	PersistentKeepalive int    `json:"persistent_keepalive"`
 	Enabled             bool   `json:"enabled"`

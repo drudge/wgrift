@@ -531,11 +531,17 @@ func (m *Manager) GenerateConfig(peerID string) (string, error) {
 		clientIPs = "0.0.0.0/0, ::/0"
 	}
 
+	// Peer DNS overrides interface DNS if set
+	dns := iface.DNS
+	if peer.DNS != "" {
+		dns = peer.DNS
+	}
+
 	params := confgen.PeerConfParams{
 		Name:            peer.Name,
 		PrivateKey:      privKey,
 		Address:         peer.Address,
-		DNS:             iface.DNS,
+		DNS:             dns,
 		ServerPublicKey: serverPubKey,
 		ServerEndpoint:  fmt.Sprintf("%s:%d", serverHost, iface.ListenPort),
 		AllowedIPs:      clientIPs,

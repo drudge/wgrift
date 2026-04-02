@@ -94,26 +94,26 @@ func PeerConfigView(ifaceID, peerID string) loom.Node {
 
 	return Div(
 		Div(
-			Apply(Attr{"class": "flex items-center gap-3 mb-6"}),
+			Apply(Attr{"class": "flex flex-wrap items-center gap-1.5 mb-6"}),
 			Button(
-				Apply(Attr{"class": "flex items-center gap-1 text-gray-400 hover:text-gray-700 text-sm transition-colors"}),
+				Apply(Attr{"class": "flex items-center gap-1 text-ink-3 hover:text-wg-400 text-sm transition-colors"}),
 				Apply(On{"click": func() { navigate(fmt.Sprintf("/interfaces/%s", ifaceID)) }}),
 				Icon("chevron-left", 16),
 				Text("Interfaces"),
 			),
-			Span(Apply(Attr{"class": "text-gray-300"}), Text("/")),
+			Span(Apply(Attr{"class": "text-ink-4/40"}), Text("/")),
 			Button(
-				Apply(Attr{"class": "text-gray-400 hover:text-gray-700 text-sm font-mono transition-colors"}),
+				Apply(Attr{"class": "text-ink-3 hover:text-wg-400 text-sm font-mono transition-colors"}),
 				Apply(On{"click": func() { navigate(fmt.Sprintf("/interfaces/%s", ifaceID)) }}),
 				Text(ifaceID),
 			),
-			Span(Apply(Attr{"class": "text-gray-300"}), Text("/")),
+			Span(Apply(Attr{"class": "text-ink-4/40"}), Text("/")),
 			Bind(func() loom.Node {
 				name := peerName()
 				if name == "" {
 					name = peerID[:8] + "..."
 				}
-				return Span(Apply(Attr{"class": "font-mono text-lg font-semibold text-gray-900"}), Text(name))
+				return Span(Apply(Attr{"class": "font-mono text-lg font-bold text-ink-1 tracking-tight"}), Text(name))
 			}),
 		),
 
@@ -122,9 +122,9 @@ func PeerConfigView(ifaceID, peerID string) loom.Node {
 			return Card(
 				Div(
 					Apply(Attr{"class": "flex flex-col items-center gap-3 py-8 text-center"}),
-					Div(Apply(Attr{"class": "text-gray-400 text-4xl"}), Text("🔒")),
-					Div(Apply(Attr{"class": "text-gray-600 font-medium"}), Text("Config Unavailable")),
-					Div(Apply(Attr{"class": "text-gray-400 text-sm max-w-md"}), Text(configErr())),
+					Div(Apply(Attr{"class": "text-ink-3 text-4xl"}), Text("🔒")),
+					Div(Apply(Attr{"class": "text-ink-1 font-medium"}), Text("Config Unavailable")),
+					Div(Apply(Attr{"class": "text-ink-3 text-sm max-w-md"}), Text(configErr())),
 					Btn("← Back", "ghost", func() {
 						navigate(fmt.Sprintf("/interfaces/%s", ifaceID))
 					}),
@@ -139,41 +139,41 @@ func PeerConfigView(ifaceID, peerID string) loom.Node {
 				Card(
 					CardHeader("Configuration",
 						Div(
-							Apply(Attr{"class": "flex gap-2"}),
+							Apply(Attr{"class": "flex flex-wrap gap-2"}),
 							Bind(func() loom.Node {
-							isCopied := copied()
-							btnClass := "inline-flex items-center gap-1.5 text-xs font-medium rounded-md border cursor-pointer px-3 py-1.5 transition-all duration-300 "
-							svg := icons["copy"](14)
-							label := "Copy"
-							if isCopied {
-								btnClass += "border-emerald-300 text-emerald-600 bg-emerald-50 scale-105"
-								svg = icons["check"](14)
-								label = "Copied!"
-							} else {
-								btnClass += "border-gray-300 text-gray-600 hover:bg-gray-50"
-							}
-							return Button(
-								Apply(Attr{"class": btnClass}),
-								Apply(On{"click": func() {
-									if !copied() {
-										js.Global().Get("navigator").Get("clipboard").Call("writeText", conf())
-										setCopied(true)
-										js.Global().Call("setTimeout", js.FuncOf(func(this js.Value, args []js.Value) any {
-											setCopied(false)
-											return nil
-										}), 2000)
-									}
-								}}),
-								Span(Apply(innerHTML(svg))),
-								Span(Text(label)),
-							)
-						}),
-						Button(
-							Apply(Attr{"class": "inline-flex items-center gap-1.5 text-xs font-medium rounded-md border transition-colors cursor-pointer px-3 py-1.5 border-gray-300 text-gray-600 hover:bg-gray-50"}),
-							Apply(On{"click": func() { downloadConf() }}),
-							Icon("download", 14),
-							Span(Text("Download")),
-						),
+								isCopied := copied()
+								btnClass := "inline-flex items-center gap-1.5 text-xs font-medium rounded-lg border cursor-pointer px-3 py-1.5 transition-all duration-300 "
+								svg := icons["copy"](14)
+								label := "Copy"
+								if isCopied {
+									btnClass += "border-green-500/30 text-green-400 bg-green-500/10 scale-105"
+									svg = icons["check"](14)
+									label = "Copied!"
+								} else {
+									btnClass += "border-line-1 text-ink-2 hover:bg-surface-3"
+								}
+								return Button(
+									Apply(Attr{"class": btnClass}),
+									Apply(On{"click": func() {
+										if !copied() {
+											js.Global().Get("navigator").Get("clipboard").Call("writeText", conf())
+											setCopied(true)
+											js.Global().Call("setTimeout", js.FuncOf(func(this js.Value, args []js.Value) any {
+												setCopied(false)
+												return nil
+											}), 2000)
+										}
+									}}),
+									Span(Apply(innerHTML(svg))),
+									Span(Text(label)),
+								)
+							}),
+							Button(
+								Apply(Attr{"class": "inline-flex items-center gap-1.5 text-xs font-medium rounded-lg border transition-all duration-150 cursor-pointer px-3 py-1.5 border-line-1 text-ink-2 hover:bg-surface-3"}),
+								Apply(On{"click": func() { downloadConf() }}),
+								Icon("download", 14),
+								Span(Text("Download")),
+							),
 						),
 					),
 					Bind(func() loom.Node {
@@ -182,7 +182,7 @@ func PeerConfigView(ifaceID, peerID string) loom.Node {
 							display = conf()
 						}
 						return Elem("pre",
-							Apply(Attr{"class": "font-mono text-xs text-gray-600 bg-gray-100 rounded p-4 overflow-auto whitespace-pre"}),
+							Apply(Attr{"class": "font-mono text-xs text-ink-2 bg-surface-2 border border-line-1 rounded-lg p-5 overflow-auto whitespace-pre leading-relaxed"}),
 							Text(display),
 						)
 					}),
@@ -191,14 +191,14 @@ func PeerConfigView(ifaceID, peerID string) loom.Node {
 						Bind(func() loom.Node {
 							if showKey() {
 								return Button(
-									Apply(Attr{"class": "inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"}),
+									Apply(Attr{"class": "inline-flex items-center gap-1.5 text-xs text-ink-3 hover:text-ink-1 transition-colors"}),
 									Apply(On{"click": func() { setShowKey(false) }}),
 									Icon("eye-off", 14),
 									Text("Hide private key"),
 								)
 							}
 							return Button(
-								Apply(Attr{"class": "inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"}),
+								Apply(Attr{"class": "inline-flex items-center gap-1.5 text-xs text-ink-3 hover:text-ink-1 transition-colors"}),
 								Apply(On{"click": func() { setShowKey(true) }}),
 								Icon("eye", 14),
 								Text("Reveal private key"),
@@ -215,7 +215,7 @@ func PeerConfigView(ifaceID, peerID string) loom.Node {
 						Img(Apply(Attr{
 							"src":   fmt.Sprintf("/api/v1/interfaces/%s/peers/%s/qr", ifaceID, peerID),
 							"alt":   "WireGuard QR Code",
-							"class": "max-w-[256px] rounded bg-white p-2",
+							"class": "max-w-[256px] rounded-lg bg-white p-2",
 						})),
 					),
 				),
