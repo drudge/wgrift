@@ -94,15 +94,48 @@ type sessionData struct {
 }
 
 type userData struct {
-	ID          string `json:"id"`
-	Username    string `json:"username"`
-	DisplayName string `json:"display_name"`
-	Role        string `json:"role"`
-	IsInitial   bool   `json:"is_initial"`
+	ID           string `json:"id"`
+	Username     string `json:"username"`
+	DisplayName  string `json:"display_name"`
+	Role         string `json:"role"`
+	IsInitial    bool   `json:"is_initial"`
+	OIDCProvider string `json:"oidc_provider,omitempty"`
+	OIDCIssuer   string `json:"oidc_issuer,omitempty"`
 }
 
 type setupCheck struct {
 	NeedsSetup bool `json:"needs_setup"`
+}
+
+type oidcProviderInfo struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	LoginURL string `json:"login_url"`
+}
+
+type authOptions struct {
+	AuthRequired     bool               `json:"auth_required"`
+	OIDCProviders    []oidcProviderInfo `json:"oidc_providers"`
+	LocalAuthEnabled bool               `json:"local_auth_enabled"`
+}
+
+type settingsData struct {
+	ExternalURL      string             `json:"external_url"`
+	OIDCProviders    []oidcProviderData `json:"oidc_providers"`
+	LocalAuthEnabled bool               `json:"local_auth_enabled"`
+}
+
+type oidcProviderData struct {
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Issuer       string `json:"issuer"`
+	ClientID     string `json:"client_id"`
+	Scopes       string `json:"scopes"`
+	AutoDiscover bool   `json:"auto_discover"`
+	AdminClaim   string `json:"admin_claim"`
+	AdminValue   string `json:"admin_value"`
+	DefaultRole  string `json:"default_role"`
+	Enabled      bool   `json:"enabled"`
 }
 
 type interfaceData struct {

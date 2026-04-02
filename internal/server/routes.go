@@ -9,6 +9,10 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /api/v1/auth/session", s.handleGetSession)
 	s.mux.HandleFunc("POST /api/v1/setup", s.handleSetup)
 
+	// OIDC endpoints (no auth middleware — these are redirect-based)
+	s.mux.HandleFunc("GET /api/v1/auth/oidc/{id}/login", s.handleOIDCLogin)
+	s.mux.HandleFunc("GET /api/v1/auth/oidc/callback", s.handleOIDCCallback)
+
 	// Protected API routes
 	protected := http.NewServeMux()
 	protected.HandleFunc("GET /api/v1/dashboard", s.handleDashboard)
@@ -47,6 +51,13 @@ func (s *Server) registerRoutes() {
 	protected.HandleFunc("POST /api/v1/users", s.handleCreateUser)
 	protected.HandleFunc("DELETE /api/v1/users/{id}", s.handleDeleteUser)
 	protected.HandleFunc("PUT /api/v1/users/{id}/password", s.handleChangePassword)
+
+	// Settings (admin only routes are checked in handlers)
+	protected.HandleFunc("GET /api/v1/settings", s.handleGetSettings)
+	protected.HandleFunc("PUT /api/v1/settings", s.handleUpdateSettings)
+	protected.HandleFunc("POST /api/v1/settings/oidc", s.handleCreateOIDCProvider)
+	protected.HandleFunc("PUT /api/v1/settings/oidc/{id}", s.handleUpdateOIDCProvider)
+	protected.HandleFunc("DELETE /api/v1/settings/oidc/{id}", s.handleDeleteOIDCProvider)
 
 	// Wrap protected routes with auth + CSRF middleware
 	authed := authRequired(s.auth, cookieName)(csrfProtect(protected))

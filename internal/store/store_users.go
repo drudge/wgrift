@@ -20,10 +20,11 @@ func (s *SQLiteStore) CreateUser(user *models.User) error {
 	user.UpdatedAt = now
 
 	_, err := s.db.Exec(`
-		INSERT INTO users (id, username, password_hash, display_name, role, is_initial, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO users (id, username, password_hash, display_name, role, is_initial, oidc_provider, oidc_subject, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		user.ID, user.Username, user.PasswordHash, user.DisplayName,
-		user.Role, user.IsInitial, user.CreatedAt, user.UpdatedAt,
+		user.Role, user.IsInitial, user.OIDCProvider, user.OIDCSubject,
+		user.CreatedAt, user.UpdatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("inserting user: %w", err)
@@ -34,10 +35,11 @@ func (s *SQLiteStore) CreateUser(user *models.User) error {
 func (s *SQLiteStore) GetUser(id string) (*models.User, error) {
 	user := &models.User{}
 	err := s.db.QueryRow(`
-		SELECT id, username, password_hash, display_name, role, is_initial, created_at, updated_at
+		SELECT id, username, password_hash, display_name, role, is_initial, oidc_provider, oidc_subject, created_at, updated_at
 		FROM users WHERE id = ?`, id,
 	).Scan(&user.ID, &user.Username, &user.PasswordHash, &user.DisplayName,
-		&user.Role, &user.IsInitial, &user.CreatedAt, &user.UpdatedAt)
+		&user.Role, &user.IsInitial, &user.OIDCProvider, &user.OIDCSubject,
+		&user.CreatedAt, &user.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -50,10 +52,11 @@ func (s *SQLiteStore) GetUser(id string) (*models.User, error) {
 func (s *SQLiteStore) GetUserByUsername(username string) (*models.User, error) {
 	user := &models.User{}
 	err := s.db.QueryRow(`
-		SELECT id, username, password_hash, display_name, role, is_initial, created_at, updated_at
+		SELECT id, username, password_hash, display_name, role, is_initial, oidc_provider, oidc_subject, created_at, updated_at
 		FROM users WHERE username = ?`, username,
 	).Scan(&user.ID, &user.Username, &user.PasswordHash, &user.DisplayName,
-		&user.Role, &user.IsInitial, &user.CreatedAt, &user.UpdatedAt)
+		&user.Role, &user.IsInitial, &user.OIDCProvider, &user.OIDCSubject,
+		&user.CreatedAt, &user.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -63,9 +66,26 @@ func (s *SQLiteStore) GetUserByUsername(username string) (*models.User, error) {
 	return user, nil
 }
 
+func (s *SQLiteStore) GetUserByOIDCIdentity(provider, subject string) (*models.User, error) {
+	user := &models.User{}
+	err := s.db.QueryRow(`
+		SELECT id, username, password_hash, display_name, role, is_initial, oidc_provider, oidc_subject, created_at, updated_at
+		FROM users WHERE oidc_provider = ? AND oidc_subject = ?`, provider, subject,
+	).Scan(&user.ID, &user.Username, &user.PasswordHash, &user.DisplayName,
+		&user.Role, &user.IsInitial, &user.OIDCProvider, &user.OIDCSubject,
+		&user.CreatedAt, &user.UpdatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("querying user by OIDC identity: %w", err)
+	}
+	return user, nil
+}
+
 func (s *SQLiteStore) ListUsers() ([]models.User, error) {
 	rows, err := s.db.Query(`
-		SELECT id, username, password_hash, display_name, role, is_initial, created_at, updated_at
+		SELECT id, username, password_hash, display_name, role, is_initial, oidc_provider, oidc_subject, created_at, updated_at
 		FROM users ORDER BY created_at`)
 	if err != nil {
 		return nil, fmt.Errorf("querying users: %w", err)
@@ -76,7 +96,8 @@ func (s *SQLiteStore) ListUsers() ([]models.User, error) {
 	for rows.Next() {
 		var user models.User
 		if err := rows.Scan(&user.ID, &user.Username, &user.PasswordHash, &user.DisplayName,
-			&user.Role, &user.IsInitial, &user.CreatedAt, &user.UpdatedAt); err != nil {
+			&user.Role, &user.IsInitial, &user.OIDCProvider, &user.OIDCSubject,
+			&user.CreatedAt, &user.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scanning user: %w", err)
 		}
 		result = append(result, user)
@@ -87,10 +108,11 @@ func (s *SQLiteStore) ListUsers() ([]models.User, error) {
 func (s *SQLiteStore) UpdateUser(user *models.User) error {
 	user.UpdatedAt = time.Now().UTC()
 	_, err := s.db.Exec(`
-		UPDATE users SET username=?, password_hash=?, display_name=?, role=?, is_initial=?, updated_at=?
+		UPDATE users SET username=?, password_hash=?, display_name=?, role=?, is_initial=?, oidc_provider=?, oidc_subject=?, updated_at=?
 		WHERE id=?`,
 		user.Username, user.PasswordHash, user.DisplayName,
-		user.Role, user.IsInitial, user.UpdatedAt, user.ID,
+		user.Role, user.IsInitial, user.OIDCProvider, user.OIDCSubject,
+		user.UpdatedAt, user.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("updating user: %w", err)

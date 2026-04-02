@@ -102,6 +102,7 @@ func mobileNavContent() loom.Node {
 			Div(
 				Div(Apply(Attr{"class": "px-3 mb-2 text-[10px] font-semibold text-ink-3 uppercase tracking-[0.15em]"}), Text("Admin")),
 				mobileNavItem("/users", "Users", "users"),
+				mobileNavItem("/settings", "Settings", "settings"),
 			),
 		),
 		// User section
@@ -193,6 +194,7 @@ func NavRail() loom.Node {
 			Div(
 				Div(Apply(Attr{"class": "px-3 mb-2 text-[10px] font-semibold text-ink-3 uppercase tracking-[0.15em]"}), Text("Admin")),
 				navItem("/users", "Users", "users"),
+				navItem("/settings", "Settings", "settings"),
 			),
 		),
 

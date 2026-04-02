@@ -87,6 +87,9 @@ func runServe(cfgPath string) error {
 	}
 	authSvc := auth.NewService(db, sessionTimeout, maxSessionAge, minPwLen)
 
+	// OIDC service (loads providers from DB, may be empty)
+	oidcSvc := auth.NewOIDCService(db, enc)
+
 	// WireGuard manager
 	nm := wg.NewNetManager()
 	mgr, err := wg.NewManager(db, enc, nm, "")
@@ -96,7 +99,7 @@ func runServe(cfgPath string) error {
 	defer mgr.Close()
 
 	// Server
-	srv := server.New(cfg, authSvc, mgr, db, enc)
+	srv := server.New(cfg, authSvc, oidcSvc, mgr, db, enc)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

@@ -8,8 +8,8 @@ import (
 
 	"github.com/loom-go/loom"
 	. "github.com/loom-go/loom/components"
-	. "github.com/loom-go/web/components"
 	"github.com/loom-go/web"
+	. "github.com/loom-go/web/components"
 )
 
 const routeContainerID = "route-content"
@@ -98,6 +98,9 @@ func resolveRoute() loom.Node {
 
 	case r == "/users":
 		return UsersView()
+
+	case r == "/settings":
+		return SettingsView()
 
 	default:
 		return DashboardView()

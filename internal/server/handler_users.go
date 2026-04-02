@@ -29,6 +29,19 @@ func (s *Server) handleListUsers(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+
+	// Enrich OIDC users with issuer URL
+	providers, _ := s.store.ListOIDCProviders()
+	issuerMap := make(map[string]string, len(providers))
+	for _, p := range providers {
+		issuerMap[p.Name] = p.Issuer
+	}
+	for i := range users {
+		if users[i].OIDCProvider != "" {
+			users[i].OIDCIssuer = issuerMap[users[i].OIDCProvider]
+		}
+	}
+
 	writeJSON(w, http.StatusOK, users)
 }
 
@@ -131,6 +144,11 @@ func (s *Server) handleChangePassword(w http.ResponseWriter, r *http.Request) {
 	user, err := s.store.GetUser(id)
 	if err != nil || user == nil {
 		writeError(w, http.StatusNotFound, "user not found")
+		return
+	}
+
+	if user.OIDCProvider != "" {
+		writeError(w, http.StatusBadRequest, "cannot change password for SSO user")
 		return
 	}
 
