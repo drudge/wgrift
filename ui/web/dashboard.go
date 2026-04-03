@@ -96,7 +96,7 @@ func DashboardView() loom.Node {
 								Span(Apply(Attr{"class": countColor + " font-mono tabular-nums"}),
 									Text(fmt.Sprintf("%d", runningCount))),
 								Span(Apply(Attr{"class": "text-ink-1"}),
-									Text(fmt.Sprintf(" of %d running", len(d.Interfaces)))),
+									Text(fmt.Sprintf(" of %d %s running", len(d.Interfaces), pluralize(len(d.Interfaces), "interface", "interfaces")))),
 							),
 						),
 						// Stats subtitle
@@ -107,6 +107,9 @@ func DashboardView() loom.Node {
 							Div(Apply(Attr{"class": "sm:hidden text-xs text-ink-3 mt-0.5"}), Text(fmt.Sprintf("↓ %s · ↑ %s", FormatBytes(d.TotalRx), FormatBytes(d.TotalTx)))),
 						),
 					),
+
+					// ── Active Connections ──
+					activeConnectionsSection(d.ActiveConnections),
 
 					// ── Interfaces ──
 					Div(
@@ -256,6 +259,110 @@ func interfaceCard(iface interfaceSummaryData) loom.Node {
 					Btn("Manage →", "ghost", func() {
 						navigate(fmt.Sprintf("/interfaces/%s", iface.ID))
 					}),
+				),
+			),
+		),
+	)
+}
+
+func activeConnectionsSection(connections []activeConnectionData) loom.Node {
+	return Div(
+		Apply(Attr{"class": "mb-8"}),
+		Div(
+			Apply(Attr{"class": "flex items-center justify-between mb-4"}),
+			H3(Apply(Attr{"class": "text-[11px] font-semibold text-ink-3 uppercase tracking-[0.15em]"}), Text("Active Connections")),
+			Span(Apply(Attr{"class": "text-xs font-mono text-ink-4"}), Text(fmt.Sprintf("%d connected", len(connections)))),
+		),
+		func() loom.Node {
+			if len(connections) == 0 {
+				return EmptyState("No active connections")
+			}
+			rows := make([]loom.Node, 0, len(connections))
+			for _, conn := range connections {
+				conn := conn
+				rows = append(rows, activeConnectionRow(conn))
+			}
+			return Div(
+				Apply(Attr{"class": "space-y-2"}),
+				Fragment(rows...),
+			)
+		}(),
+	)
+}
+
+func activeConnectionRow(conn activeConnectionData) loom.Node {
+	clickNav := func() { navigate(fmt.Sprintf("/interfaces/%s", conn.InterfaceID)) }
+
+	return Div(
+		Apply(Attr{"class": "bg-surface-1 border border-line-1 rounded-lg hover:border-line-3 transition-all duration-150 cursor-pointer"}),
+		Apply(On{"click": clickNav}),
+		Div(
+			Apply(Attr{"class": "px-5 py-3.5"}),
+
+			// Desktop
+			Div(
+				Apply(Attr{"class": "hidden sm:flex items-center justify-between gap-4"}),
+				Div(
+					Apply(Attr{"class": "flex items-center gap-3 min-w-0"}),
+					Div(Apply(Attr{"class": "w-2 h-2 rounded-full bg-green-400 flex-shrink-0"})),
+					Div(
+						Apply(Attr{"class": "min-w-0"}),
+						Div(
+							Apply(Attr{"class": "flex items-center gap-2.5"}),
+							Span(Apply(Attr{"class": "text-sm font-semibold text-ink-1 truncate"}), Text(conn.PeerName)),
+							Badge(conn.InterfaceID, ""),
+							PeerTypeBadge(conn.PeerType),
+						),
+						Div(
+							Apply(Attr{"class": "flex items-center gap-4 font-mono text-xs text-ink-3 mt-0.5"}),
+							Span(Apply(Attr{"class": "text-ink-2"}), Text(conn.Address)),
+							func() loom.Node {
+								if conn.Endpoint != "" {
+									return Span(
+										Span(Apply(Attr{"class": "text-ink-4"}), Text("from ")),
+										Text(conn.Endpoint),
+									)
+								}
+								return Span()
+							}(),
+							Span(Text(fmt.Sprintf("↓%s ↑%s", FormatBytes(conn.TransferRx), FormatBytes(conn.TransferTx)))),
+						),
+					),
+				),
+				Span(
+					Apply(Attr{"class": "text-ink-3 text-sm flex-shrink-0"}),
+					Text("→"),
+				),
+			),
+
+			// Mobile
+			Div(
+				Apply(Attr{"class": "sm:hidden"}),
+				Div(
+					Apply(Attr{"class": "flex items-center gap-3 min-w-0"}),
+					Div(Apply(Attr{"class": "w-2 h-2 rounded-full bg-green-400 flex-shrink-0"})),
+					Div(
+						Apply(Attr{"class": "min-w-0 flex-1"}),
+						Div(
+							Apply(Attr{"class": "flex items-center gap-2"}),
+							Span(Apply(Attr{"class": "text-sm font-semibold text-ink-1 truncate"}), Text(conn.PeerName)),
+							Badge(conn.InterfaceID, ""),
+						),
+						Div(
+							Apply(Attr{"class": "font-mono text-xs text-ink-3 mt-0.5"}),
+							Text(conn.Address),
+						),
+					),
+				),
+				Div(
+					Apply(Attr{"class": "flex items-center gap-3 text-xs font-mono text-ink-3 mt-2 pl-5"}),
+					func() loom.Node {
+						if conn.Endpoint != "" {
+							return Span(Text(conn.Endpoint))
+						}
+						return Span()
+					}(),
+					Span(Text(fmt.Sprintf("↓%s ↑%s", FormatBytes(conn.TransferRx), FormatBytes(conn.TransferTx)))),
 				),
 			),
 		),

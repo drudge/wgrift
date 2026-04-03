@@ -1,6 +1,9 @@
 package server
 
-import "net/http"
+import (
+	"net/http"
+	"time"
+)
 
 type interfaceSummary struct {
 	ID             string `json:"id"`
@@ -16,12 +19,25 @@ type interfaceSummary struct {
 	TotalTx        int64  `json:"total_tx"`
 }
 
+type activeConnection struct {
+	InterfaceID   string `json:"interface_id"`
+	PeerID        string `json:"peer_id"`
+	PeerName      string `json:"peer_name"`
+	PeerType      string `json:"peer_type"`
+	Address       string `json:"address"`
+	Endpoint      string `json:"endpoint,omitempty"`
+	LastHandshake string `json:"last_handshake"`
+	TransferRx    int64  `json:"transfer_rx"`
+	TransferTx    int64  `json:"transfer_tx"`
+}
+
 type dashboardResponse struct {
-	Interfaces  []interfaceSummary `json:"interfaces"`
-	TotalPeers  int                `json:"total_peers"`
-	ActivePeers int                `json:"active_peers"`
-	TotalRx     int64              `json:"total_rx"`
-	TotalTx     int64              `json:"total_tx"`
+	Interfaces        []interfaceSummary `json:"interfaces"`
+	ActiveConnections []activeConnection `json:"active_connections"`
+	TotalPeers        int                `json:"total_peers"`
+	ActivePeers       int                `json:"active_peers"`
+	TotalRx           int64              `json:"total_rx"`
+	TotalTx           int64              `json:"total_tx"`
 }
 
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
@@ -50,6 +66,20 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 				summary.TotalPeers++
 				if p.Connected {
 					summary.ConnectedPeers++
+					conn := activeConnection{
+						InterfaceID: iface.ID,
+						PeerID:      p.Peer.ID,
+						PeerName:    p.Peer.Name,
+						PeerType:    string(p.Peer.Type),
+						Address:     p.Peer.Address,
+						Endpoint:    p.Endpoint,
+						TransferRx:  p.TransferRx,
+						TransferTx:  p.TransferTx,
+					}
+					if !p.LastHandshake.IsZero() {
+						conn.LastHandshake = p.LastHandshake.Format(time.RFC3339)
+					}
+					resp.ActiveConnections = append(resp.ActiveConnections, conn)
 				}
 				summary.TotalRx += p.TransferRx
 				summary.TotalTx += p.TransferTx

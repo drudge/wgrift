@@ -271,6 +271,13 @@ func FormatBytes(b int64) string {
 	}
 }
 
+func pluralize(n int, singular, plural string) string {
+	if n == 1 {
+		return singular
+	}
+	return plural
+}
+
 // FormatTimestamp converts an ISO/RFC3339 timestamp to US 12-hour format.
 func FormatTimestamp(ts string) string {
 	t, err := time.Parse(time.RFC3339, ts)

@@ -18,7 +18,7 @@ import (
 var interfacesFormMode = "none" // "none", "create", "import"
 
 func InterfacesView() loom.Node {
-	ifaces, setIfaces := Signal[[]interfaceData](nil)
+	ifaces, setIfaces := Signal[[]interfaceSummaryData](nil)
 	loading, setLoading := Signal(true)
 
 	// Check URL params on first mount
@@ -32,13 +32,16 @@ func InterfacesView() loom.Node {
 	loadIfaces := func() {
 		go func() {
 			var resp apiResponse
-			if err := apiFetch("GET", "/api/v1/interfaces", nil, &resp); err != nil {
+			if err := apiFetch("GET", "/api/v1/dashboard", nil, &resp); err != nil {
 				setLoading(false)
 				return
 			}
-			var list []interfaceData
-			json.Unmarshal(resp.Data, &list)
-			setIfaces(list)
+			var d dashboardData
+			if err := json.Unmarshal(resp.Data, &d); err != nil {
+				setLoading(false)
+				return
+			}
+			setIfaces(d.Interfaces)
 			setLoading(false)
 		}()
 	}
@@ -76,7 +79,7 @@ func InterfacesView() loom.Node {
 				case "create":
 					return Div(
 						Apply(Attr{"class": "mb-6"}),
-						createInterfaceForm(ifaces(), func() {
+						createInterfaceForm(summaryToInterfaceData(ifaces()), func() {
 							interfacesFormMode = "none"
 							js.Global().Get("window").Get("history").Call("replaceState", nil, "", "/interfaces")
 							refreshRoute()
@@ -101,64 +104,130 @@ func InterfacesView() loom.Node {
 				return Div(formNode, EmptyState("No interfaces configured"))
 			}
 
-			// Mobile cards
-			cards := make([]loom.Node, 0, len(list))
-			// Desktop card rows
-			rows := make([]loom.Node, 0, len(list))
+			nodes := make([]loom.Node, 0, len(list))
 			for _, iface := range list {
 				iface := iface
-				clickNav := func() { navigate(fmt.Sprintf("/interfaces/%s", iface.ID)) }
-				badge := func() loom.Node {
-					if iface.Enabled {
-						return Badge("enabled", "emerald")
-					}
-					return Badge("disabled", "")
-				}()
-
-				// Mobile card
-				cards = append(cards, Div(
-					Apply(Attr{"class": "bg-surface-1 border border-line-1 rounded-lg px-5 py-4 active:bg-surface-2"}),
-					Apply(On{"click": clickNav}),
-					Div(
-						Apply(Attr{"class": "flex items-center justify-between mb-2"}),
-						Span(Apply(Attr{"class": "font-mono text-sm font-medium text-ink-1"}), Text(iface.ID)),
-						badge,
-					),
-					Div(
-						Apply(Attr{"class": "font-mono text-xs text-ink-3"}),
-						Text(fmt.Sprintf("%s · port %d", iface.Address, iface.ListenPort)),
-					),
-				))
-
-				// Desktop card row
-				rows = append(rows, Div(
-					Apply(Attr{"class": "bg-surface-1 rounded-lg px-6 py-4 flex items-center justify-between hover:bg-surface-2/60 transition-colors cursor-pointer"}),
-					Apply(On{"click": clickNav}),
-					// Left: primary info
-					Div(
-						Apply(Attr{"class": "flex items-center gap-5 min-w-0"}),
-						Span(Apply(Attr{"class": "font-mono text-sm font-bold text-ink-1 w-24 flex-shrink-0"}), Text(iface.ID)),
-						Span(Apply(Attr{"class": "font-mono text-sm text-ink-3"}), Text(fmt.Sprintf("%s · :%d", iface.Address, iface.ListenPort))),
-					),
-					// Right: badge
-					badge,
-				))
+				nodes = append(nodes, interfaceListCard(iface))
 			}
 
 			return Div(
 				formNode,
-				// Mobile cards
 				Div(
-					Apply(Attr{"class": "md:hidden space-y-3"}),
-					Fragment(cards...),
-				),
-				// Desktop card rows
-				Div(
-					Apply(Attr{"class": "hidden md:block space-y-2"}),
-					Fragment(rows...),
+					Apply(Attr{"class": "space-y-2"}),
+					Fragment(nodes...),
 				),
 			)
 		}),
+	)
+}
+
+// summaryToInterfaceData converts summary data for the create form defaults.
+func summaryToInterfaceData(summaries []interfaceSummaryData) []interfaceData {
+	out := make([]interfaceData, len(summaries))
+	for i, s := range summaries {
+		out[i] = interfaceData{
+			ID:         s.ID,
+			ListenPort: s.ListenPort,
+			Address:    s.Address,
+		}
+	}
+	return out
+}
+
+func interfaceListCard(iface interfaceSummaryData) loom.Node {
+	clickNav := func() { navigate(fmt.Sprintf("/interfaces/%s", iface.ID)) }
+
+	dotClass := "w-2 h-2 rounded-full flex-shrink-0 "
+	statusText := "Stopped"
+	statusClass := "text-[11px] text-ink-4 font-medium"
+	if iface.Running {
+		dotClass += "bg-green-400"
+		statusText = "Running"
+		statusClass = "text-[11px] text-green-400/70 font-medium"
+	} else {
+		dotClass += "bg-ink-4"
+	}
+
+	// Peer stats
+	peerStats := Span(
+		Apply(Attr{"class": "text-xs font-mono text-ink-2"}),
+		Span(Apply(Attr{"class": "font-semibold"}), Text(fmt.Sprintf("%d", iface.ConnectedPeers))),
+		Text(fmt.Sprintf("/%d peers", iface.TotalPeers)),
+	)
+
+	// Traffic (only if non-zero)
+	trafficNode := Span()
+	if iface.TotalRx > 0 || iface.TotalTx > 0 {
+		trafficNode = Span(
+			Apply(Attr{"class": "text-xs font-mono text-ink-3"}),
+			Text(fmt.Sprintf("↓%s ↑%s", FormatBytes(iface.TotalRx), FormatBytes(iface.TotalTx))),
+		)
+	}
+
+	return Div(
+		Apply(Attr{"class": "bg-surface-1 border border-line-1 rounded-lg hover:border-line-3 transition-all duration-150 cursor-pointer"}),
+		Apply(On{"click": clickNav}),
+		Div(
+			Apply(Attr{"class": "px-5 py-4"}),
+
+			// Desktop layout
+			Div(
+				Apply(Attr{"class": "hidden sm:flex items-center justify-between gap-4"}),
+				// Left: status dot + info
+				Div(
+					Apply(Attr{"class": "flex items-start gap-3 min-w-0"}),
+					Div(Apply(Attr{"class": dotClass + " mt-1.5"})),
+					Div(
+						Apply(Attr{"class": "min-w-0"}),
+						Div(
+							Apply(Attr{"class": "flex items-center gap-2.5"}),
+							Span(Apply(Attr{"class": "font-mono text-sm font-bold text-ink-1"}), Text(iface.ID)),
+							Span(Apply(Attr{"class": statusClass}), Text(statusText)),
+						),
+						Div(
+							Apply(Attr{"class": "font-mono text-xs text-ink-3 mt-0.5"}),
+							Text(fmt.Sprintf("%s · :%d", iface.Address, iface.ListenPort)),
+						),
+						Div(
+							Apply(Attr{"class": "flex items-center gap-4 mt-1.5"}),
+							peerStats,
+							trafficNode,
+						),
+					),
+				),
+				// Right: manage arrow
+				Span(
+					Apply(Attr{"class": "text-ink-3 text-sm flex-shrink-0"}),
+					Text("→"),
+				),
+			),
+
+			// Mobile layout
+			Div(
+				Apply(Attr{"class": "sm:hidden"}),
+				Div(
+					Apply(Attr{"class": "flex items-center gap-3 min-w-0"}),
+					Div(Apply(Attr{"class": dotClass})),
+					Div(
+						Apply(Attr{"class": "min-w-0 flex-1"}),
+						Div(
+							Apply(Attr{"class": "flex items-center gap-2.5"}),
+							Span(Apply(Attr{"class": "font-mono text-sm font-bold text-ink-1"}), Text(iface.ID)),
+							Span(Apply(Attr{"class": statusClass}), Text(statusText)),
+						),
+						Div(
+							Apply(Attr{"class": "font-mono text-xs text-ink-3 mt-0.5"}),
+							Text(fmt.Sprintf("%s · :%d", iface.Address, iface.ListenPort)),
+						),
+					),
+				),
+				Div(
+					Apply(Attr{"class": "flex items-center gap-3 text-xs font-mono text-ink-3 mt-2 pl-5"}),
+					peerStats,
+					trafficNode,
+				),
+			),
+		),
 	)
 }
 
