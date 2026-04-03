@@ -31,11 +31,12 @@ func MobileTopBar() loom.Node {
 			Apply(On{"click": func() { setMobileNavOpen(!mobileNavOpen()) }}),
 			Icon("menu", 20),
 		),
-		// Brand — centered
+		// Brand — centered, tappable to go home
 		Div(
 			Apply(Attr{"class": "flex-1 flex justify-center"}),
-			Div(
+			Button(
 				Apply(Attr{"class": "text-base font-black tracking-tight"}),
+				Apply(On{"click": func() { navigate("/") }}),
 				Span(Apply(Attr{"class": "text-wg-500"}), Text("wg")),
 				Span(Apply(Attr{"class": "text-ink-1"}), Text("Rift")),
 			),

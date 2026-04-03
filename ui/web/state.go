@@ -4,6 +4,8 @@ package main
 
 import (
 	"encoding/json"
+	"syscall/js"
+	"time"
 
 	. "github.com/loom-go/loom/components"
 )
@@ -42,13 +44,22 @@ func initState() {
 }
 
 // checkSessionPreload uses apiFetch to determine auth state before Loom starts.
+// It retries a few times with backoff in case the server is still starting up.
 func checkSessionPreload() {
 	var resp apiResponse
-	if err := apiFetch("GET", "/api/v1/auth/session", nil, &resp); err != nil {
-		return
+	var err error
+
+	for attempt := range 3 {
+		resp = apiResponse{}
+		err = apiFetchWithTimeout("GET", "/api/v1/auth/session", nil, &resp, 2*time.Second)
+		if err == nil {
+			break
+		}
+		// Brief pause before retry: 500ms, 1s, 2s
+		sleepMs(500 << attempt)
 	}
 
-	if resp.Error != "" {
+	if err != nil || resp.Error != "" {
 		return
 	}
 
@@ -74,6 +85,17 @@ func checkSessionPreload() {
 		preloadCSRF = session.CSRFToken
 		preloadAuthed = true
 	}
+}
+
+// sleepMs pauses the goroutine for the given number of milliseconds,
+// yielding to the browser event loop via setTimeout.
+func sleepMs(ms int) {
+	done := make(chan struct{})
+	js.Global().Call("setTimeout", js.FuncOf(func(this js.Value, args []js.Value) any {
+		close(done)
+		return nil
+	}), ms)
+	<-done
 }
 
 func unmarshalData(raw json.RawMessage, v any) error {

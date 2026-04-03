@@ -6,12 +6,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"syscall/js"
+	"time"
 )
 
 var csrfToken string
 
 // apiFetch makes an HTTP request to the API and returns the parsed JSON response.
 func apiFetch(method, path string, body any, result any) error {
+	return apiFetchWithTimeout(method, path, body, result, 10*time.Second)
+}
+
+// apiFetchWithTimeout is like apiFetch but with a custom timeout.
+func apiFetchWithTimeout(method, path string, body any, result any, timeout time.Duration) error {
 	opts := js.Global().Get("Object").New()
 	opts.Set("method", method)
 	opts.Set("credentials", "same-origin")
@@ -31,11 +37,20 @@ func apiFetch(method, path string, body any, result any) error {
 		opts.Set("body", string(data))
 	}
 
+	// Set up an AbortController with timeout
+	controller := js.Global().Get("AbortController").New()
+	opts.Set("signal", controller.Get("signal"))
+	timeoutID := js.Global().Call("setTimeout", js.FuncOf(func(this js.Value, args []js.Value) any {
+		controller.Call("abort")
+		return nil
+	}), int(timeout.Milliseconds()))
+
 	// Make the fetch call synchronously using a channel
 	done := make(chan error, 1)
 	var responseText string
 
 	thenFn := js.FuncOf(func(this js.Value, args []js.Value) any {
+		js.Global().Call("clearTimeout", timeoutID)
 		response := args[0]
 		status := response.Get("status").Int()
 
@@ -61,6 +76,7 @@ func apiFetch(method, path string, body any, result any) error {
 	defer thenFn.Release()
 
 	catchFn := js.FuncOf(func(this js.Value, args []js.Value) any {
+		js.Global().Call("clearTimeout", timeoutID)
 		done <- fmt.Errorf("fetch error: %v", args[0])
 		return nil
 	})

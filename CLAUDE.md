@@ -5,14 +5,19 @@ WireGuard VPN management platform with CLI, REST API, and WASM web UI.
 ## Build & Development
 
 ```bash
-make build       # Build CLI binary → bin/wgrift
-make wasm        # Compile WASM UI → ui/web/wgrift.wasm
+# GoReleaser (preferred — builds WASM, copies wasm_exec.js, cross-compiles automatically)
+goreleaser build --snapshot --clean                 # All targets → dist/
+goreleaser build --snapshot --single-target --clean # Current OS/arch only
+GOOS=linux GOARCH=amd64 goreleaser build --snapshot --single-target --clean  # Linux amd64
+
+# Make (local dev convenience)
 make serve-web   # Dev WASM server on :8080
 make serve       # Full local dev (wasm + serve command)
-make dist        # Cross-compile linux/amd64 → dist/wgrift
 make test        # Run tests (internal/...)
 make lint        # golangci-lint
 ```
+
+GoReleaser config: `.goreleaser.yaml` — before hooks build WASM and copy `wasm_exec.js` automatically.
 
 Module: `github.com/drudge/wgrift`
 Go version: 1.25.5
@@ -68,9 +73,9 @@ When adding a column: create a new migration file (next number), add the column 
 Target: LXC container 100 on `blue.adk.network`
 
 ```bash
-make dist
+GOOS=linux GOARCH=amd64 goreleaser build --snapshot --single-target --clean
 ssh root@blue.adk.network "pct exec 100 -- systemctl stop wgrift"
-scp dist/wgrift root@blue.adk.network:/tmp/wgrift
+scp dist/wgrift_linux_amd64_v1/wgrift root@blue.adk.network:/tmp/wgrift
 ssh root@blue.adk.network "pct push 100 /tmp/wgrift /usr/local/bin/wgrift && \
   pct exec 100 -- chmod +x /usr/local/bin/wgrift && \
   pct exec 100 -- systemctl start wgrift"
