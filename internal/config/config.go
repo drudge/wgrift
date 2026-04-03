@@ -8,6 +8,7 @@ import (
 )
 
 type Config struct {
+	Demo       bool             `yaml:"demo"`
 	Server     ServerConfig     `yaml:"server"`
 	Database   DatabaseConfig   `yaml:"database"`
 	Auth       AuthConfig       `yaml:"auth"`
@@ -89,6 +90,7 @@ type UniFiConfig struct {
 
 func Defaults() Config {
 	return Config{
+		Demo: os.Getenv("WGRIFT_DEMO_MODE") == "true",
 		Server: ServerConfig{
 			Listen:  "0.0.0.0:8443",
 			WebRoot: "ui/web",
@@ -140,6 +142,10 @@ func Load(path string) (Config, error) {
 	// Allow env var override for master key
 	if key := os.Getenv("WGRIFT_MASTER_KEY"); key != "" {
 		cfg.Encryption.MasterKeyFile = ""
+	}
+
+	if os.Getenv("WGRIFT_DEMO_MODE") == "true" {
+		cfg.Demo = true
 	}
 
 	return cfg, nil

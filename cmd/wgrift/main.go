@@ -16,6 +16,7 @@ import (
 	"github.com/drudge/wgrift/internal/store"
 	"github.com/drudge/wgrift/internal/wg"
 	"github.com/spf13/cobra"
+	"golang.zx2c4.com/wireguard/wgctrl"
 )
 
 func main() {
@@ -91,10 +92,23 @@ func runServe(cfgPath string) error {
 	oidcSvc := auth.NewOIDCService(db, enc)
 
 	// WireGuard manager
-	nm := wg.NewNetManager()
-	mgr, err := wg.NewManager(db, enc, nm, "")
-	if err != nil {
-		return fmt.Errorf("creating wg manager: %w", err)
+	var mgr *wg.Manager
+	if cfg.Demo {
+		log.Println("*** DEMO MODE ENABLED — using simulated WireGuard data ***")
+		nm := wg.NewDemoNetManager()
+		demoClient := wg.NewDemoWGClient(db)
+		mgr = wg.NewManager(db, enc, nm, demoClient, "demo.vandelay.io")
+
+		if err := wg.SeedDemoData(db, enc); err != nil {
+			return fmt.Errorf("seeding demo data: %w", err)
+		}
+	} else {
+		nm := wg.NewNetManager()
+		wgClient, err := wgctrl.New()
+		if err != nil {
+			return fmt.Errorf("creating wgctrl client: %w", err)
+		}
+		mgr = wg.NewManager(db, enc, nm, wgClient, "")
 	}
 	defer mgr.Close()
 

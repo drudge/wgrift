@@ -10,7 +10,6 @@ import (
 	"github.com/drudge/wgrift/internal/crypto"
 	"github.com/drudge/wgrift/internal/models"
 	"github.com/drudge/wgrift/internal/store"
-	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -19,17 +18,12 @@ type Manager struct {
 	store      store.Store
 	enc        *crypto.Encryptor
 	net        NetManager
-	wg         *wgctrl.Client
+	wg         WGClient
 	externalIP string
 }
 
 // NewManager creates a new WireGuard manager.
-func NewManager(s store.Store, enc *crypto.Encryptor, nm NetManager, externalIP string) (*Manager, error) {
-	wgClient, err := wgctrl.New()
-	if err != nil {
-		return nil, fmt.Errorf("creating wgctrl client: %w", err)
-	}
-
+func NewManager(s store.Store, enc *crypto.Encryptor, nm NetManager, wgClient WGClient, externalIP string) *Manager {
 	if externalIP == "" {
 		externalIP = detectExternalIP()
 	}
@@ -40,7 +34,7 @@ func NewManager(s store.Store, enc *crypto.Encryptor, nm NetManager, externalIP 
 		net:        nm,
 		wg:         wgClient,
 		externalIP: externalIP,
-	}, nil
+	}
 }
 
 // Close closes the wgctrl client.
