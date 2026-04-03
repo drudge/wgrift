@@ -8,8 +8,9 @@ import (
 )
 
 func (s *SQLiteStore) CreateConnectionLog(log *models.ConnectionLog) error {
-	now := time.Now().UTC()
-	log.RecordedAt = now
+	if log.RecordedAt.IsZero() {
+		log.RecordedAt = time.Now().UTC()
+	}
 
 	result, err := s.db.Exec(`
 		INSERT INTO connection_logs (peer_id, interface_id, event, endpoint, transfer_rx, transfer_tx, recorded_at)

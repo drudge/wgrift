@@ -27,7 +27,7 @@ serve-web: wasm
 	go run ./cmd/serve-web
 
 serve: wasm build
-	WGRIFT_MASTER_KEY=$${WGRIFT_MASTER_KEY:-dev-master-key} ./bin/wgrift serve
+	WGRIFT_MASTER_KEY=$${WGRIFT_MASTER_KEY:-dev-master-key} WGRIFT_DEMO_MODE=true ./bin/wgrift serve
 
 dist: wasm
 	@mkdir -p dist
