@@ -177,7 +177,7 @@ pct exec "$CTID" -- bash -c "
   apt-get install -y -qq wireguard-tools curl
 
   # Create directories
-  mkdir -p /opt/wgrift/web /etc/wgrift /var/lib/wgrift
+  mkdir -p /etc/wgrift /var/lib/wgrift
 
   # Download release
   cd /tmp
@@ -185,10 +185,9 @@ pct exec "$CTID" -- bash -c "
   tar xzf wgrift.tar.gz
   cd wgrift-${VERSION}-${ARCH_SUFFIX}
 
-  # Install binary and web assets
-  cp wgrift /opt/wgrift/wgrift
-  chmod +x /opt/wgrift/wgrift
-  cp wgrift.wasm index.html wasm_exec.js /opt/wgrift/web/
+  # Install binary
+  cp wgrift /usr/local/bin/wgrift
+  chmod +x /usr/local/bin/wgrift
 
   # Generate master key
   head -c 32 /dev/urandom | base64 > /etc/wgrift/master.key
@@ -222,7 +221,7 @@ echo ""
 echo -e "  Container ID:  ${BL}${CTID}${CL}"
 echo -e "  Hostname:      ${BL}${var_hostname}${CL}"
 if [[ -n "$CT_IP" ]]; then
-  echo -e "  Web UI:        ${BL}http://${CT_IP}:8443${CL}"
+  echo -e "  Web UI:        ${BL}http://${CT_IP}:8080${CL}"
 fi
 echo ""
 echo -e "  ${YW}Next steps:${CL}"

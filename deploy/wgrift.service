@@ -5,7 +5,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/opt/wgrift/wgrift serve --config /etc/wgrift/config.yaml
+ExecStart=/usr/local/bin/wgrift serve --config /etc/wgrift/config.yaml
 Restart=on-failure
 RestartSec=5
 
