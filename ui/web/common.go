@@ -312,15 +312,17 @@ func showToast(msg string) {
 func Toast() loom.Node {
 	return Bind(func() loom.Node {
 		msg := toastMsg()
+		cls := "fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-toast"
 		if msg == "" {
-			return Div(Apply(Attr{"class": "hidden"}))
+			cls = "fixed bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none opacity-0"
+			msg = "\u00a0" // non-breaking space to preserve structure
 		}
 		return Div(
-			Apply(Attr{"class": "fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-toast"}),
+			Apply(Attr{"class": cls}),
 			Div(
 				Apply(Attr{"class": "flex items-center gap-2.5 px-5 py-3 bg-surface-3 border border-line-3 text-ink-1 text-sm font-medium rounded-lg"}),
 				Icon("check", 16),
-				Text(msg),
+				Span(Text(msg)),
 			),
 		)
 	})

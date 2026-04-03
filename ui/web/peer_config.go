@@ -87,6 +87,7 @@ func PeerConfigView(ifaceID, peerID string) loom.Node {
 
 	showKey, setShowKey := Signal(false)
 	copied, setCopied := Signal(false)
+	configExpanded, setConfigExpanded := Signal(false)
 
 	maskedConf := func() string {
 		return privateKeyRe.ReplaceAllString(conf(), "${1}••••••••••••••••••••••••••••••••••••••••••••")
@@ -137,74 +138,144 @@ func PeerConfigView(ifaceID, peerID string) loom.Node {
 
 				// Config text
 				Card(
-					CardHeader("Configuration",
+					// Mobile: accordion header with action buttons
+					Div(
+						Apply(Attr{"class": "sm:hidden -m-6 p-6"}),
 						Div(
-							Apply(Attr{"class": "flex flex-wrap gap-2"}),
-							Bind(func() loom.Node {
-								isCopied := copied()
-								btnClass := "inline-flex items-center gap-1.5 text-xs font-medium rounded-lg border cursor-pointer px-3 py-1.5 transition-all duration-300 "
-								svg := icons["copy"](14)
-								label := "Copy"
-								if isCopied {
-									btnClass += "border-green-500/30 text-green-400 bg-green-500/10 scale-105"
-									svg = icons["check"](14)
-									label = "Copied!"
-								} else {
-									btnClass += "border-line-1 text-ink-2 hover:bg-surface-3"
-								}
-								return Button(
-									Apply(Attr{"class": btnClass}),
-									Apply(On{"click": func() {
-										if !copied() {
-											js.Global().Get("navigator").Get("clipboard").Call("writeText", conf())
-											setCopied(true)
-											js.Global().Call("setTimeout", js.FuncOf(func(this js.Value, args []js.Value) any {
-												setCopied(false)
-												return nil
-											}), 2000)
-										}
-									}}),
-									Span(Apply(innerHTML(svg))),
-									Span(Text(label)),
-								)
-							}),
-							Button(
-								Apply(Attr{"class": "inline-flex items-center gap-1.5 text-xs font-medium rounded-lg border transition-all duration-150 cursor-pointer px-3 py-1.5 border-line-1 text-ink-2 hover:bg-surface-3"}),
-								Apply(On{"click": func() { downloadConf() }}),
-								Icon("download", 14),
-								Span(Text("Download")),
+							Apply(Attr{"class": "flex items-center justify-between"}),
+							H3(
+								Apply(Attr{"class": "text-[11px] font-semibold text-ink-3 uppercase tracking-[0.15em] cursor-pointer"}),
+								Apply(On{"click": func() { setConfigExpanded(!configExpanded()) }}),
+								Text("Configuration"),
+							),
+							Div(
+								Apply(Attr{"class": "flex items-center gap-2"}),
+								Bind(func() loom.Node {
+									isCopied := copied()
+									btnClass := "inline-flex items-center gap-1.5 text-xs font-medium rounded-lg border cursor-pointer px-3 py-1.5 transition-all duration-300 "
+									svg := icons["copy"](14)
+									label := "Copy"
+									if isCopied {
+										btnClass += "border-green-500/30 text-green-400 bg-green-500/10 scale-105"
+										svg = icons["check"](14)
+										label = "Copied!"
+									} else {
+										btnClass += "border-line-1 text-ink-2 hover:bg-surface-3"
+									}
+									return Button(
+										Apply(Attr{"class": btnClass}),
+										Apply(On{"click": func() {
+											if !copied() {
+												js.Global().Get("navigator").Get("clipboard").Call("writeText", conf())
+												setCopied(true)
+												js.Global().Call("setTimeout", js.FuncOf(func(this js.Value, args []js.Value) any {
+													setCopied(false)
+													return nil
+												}), 2000)
+											}
+										}}),
+										Span(Apply(innerHTML(svg))),
+										Span(Text(label)),
+									)
+								}),
+								Button(
+									Apply(Attr{"class": "inline-flex items-center gap-1.5 text-xs font-medium rounded-lg border transition-all duration-150 cursor-pointer px-3 py-1.5 border-line-1 text-ink-2 hover:bg-surface-3"}),
+									Apply(On{"click": func() { downloadConf() }}),
+									Icon("download", 14),
+									Span(Text("Download")),
+								),
+								Bind(func() loom.Node {
+									chevronCls := "transition-transform duration-200 text-ink-3 cursor-pointer"
+									if configExpanded() {
+										chevronCls += " rotate-180"
+									}
+									return Span(
+										Apply(Attr{"class": chevronCls}),
+										Apply(On{"click": func() { setConfigExpanded(!configExpanded()) }}),
+										Icon("chevron-down", 16),
+									)
+								}),
 							),
 						),
 					),
+					// Desktop: normal header with actions (hidden on mobile)
+					Div(
+						Apply(Attr{"class": "hidden sm:block"}),
+						CardHeader("Configuration",
+							Div(
+								Apply(Attr{"class": "flex flex-wrap gap-2"}),
+								Bind(func() loom.Node {
+									isCopied := copied()
+									btnClass := "inline-flex items-center gap-1.5 text-xs font-medium rounded-lg border cursor-pointer px-3 py-1.5 transition-all duration-300 "
+									svg := icons["copy"](14)
+									label := "Copy"
+									if isCopied {
+										btnClass += "border-green-500/30 text-green-400 bg-green-500/10 scale-105"
+										svg = icons["check"](14)
+										label = "Copied!"
+									} else {
+										btnClass += "border-line-1 text-ink-2 hover:bg-surface-3"
+									}
+									return Button(
+										Apply(Attr{"class": btnClass}),
+										Apply(On{"click": func() {
+											if !copied() {
+												js.Global().Get("navigator").Get("clipboard").Call("writeText", conf())
+												setCopied(true)
+												js.Global().Call("setTimeout", js.FuncOf(func(this js.Value, args []js.Value) any {
+													setCopied(false)
+													return nil
+												}), 2000)
+											}
+										}}),
+										Span(Apply(innerHTML(svg))),
+										Span(Text(label)),
+									)
+								}),
+								Button(
+									Apply(Attr{"class": "inline-flex items-center gap-1.5 text-xs font-medium rounded-lg border transition-all duration-150 cursor-pointer px-3 py-1.5 border-line-1 text-ink-2 hover:bg-surface-3"}),
+									Apply(On{"click": func() { downloadConf() }}),
+									Icon("download", 14),
+									Span(Text("Download")),
+								),
+							),
+						),
+					),
+					// Config body: hidden on mobile until expanded, always visible on desktop
 					Bind(func() loom.Node {
+						bodyCls := "hidden sm:block"
+						if configExpanded() {
+							bodyCls = "block mt-4 sm:mt-0"
+						}
 						display := maskedConf()
 						if showKey() {
 							display = conf()
 						}
-						return Elem("pre",
-							Apply(Attr{"class": "font-mono text-xs text-ink-2 bg-surface-2 border border-line-1 rounded-lg p-5 overflow-auto whitespace-pre leading-relaxed"}),
-							Text(display),
+						return Div(
+							Apply(Attr{"class": bodyCls}),
+							Elem("pre",
+								Apply(Attr{"class": "font-mono text-xs text-ink-2 bg-surface-2 border border-line-1 rounded-lg p-5 overflow-auto whitespace-pre leading-relaxed"}),
+								Text(display),
+							),
+							Div(
+								Apply(Attr{"class": "mt-3 flex items-center gap-2"}),
+								Bind(func() loom.Node {
+									svg := icons["eye"](14)
+									label := "Reveal private key"
+									if showKey() {
+										svg = icons["eye-off"](14)
+										label = "Hide private key"
+									}
+									return Button(
+										Apply(Attr{"class": "inline-flex items-center gap-1.5 text-xs text-ink-3 hover:text-ink-1 transition-colors"}),
+										Apply(On{"click": func() { setShowKey(!showKey()) }}),
+										Span(Apply(innerHTML(svg))),
+										Span(Text(label)),
+									)
+								}),
+							),
 						)
 					}),
-					Div(
-						Apply(Attr{"class": "mt-3 flex items-center gap-2"}),
-						Bind(func() loom.Node {
-							if showKey() {
-								return Button(
-									Apply(Attr{"class": "inline-flex items-center gap-1.5 text-xs text-ink-3 hover:text-ink-1 transition-colors"}),
-									Apply(On{"click": func() { setShowKey(false) }}),
-									Icon("eye-off", 14),
-									Text("Hide private key"),
-								)
-							}
-							return Button(
-								Apply(Attr{"class": "inline-flex items-center gap-1.5 text-xs text-ink-3 hover:text-ink-1 transition-colors"}),
-								Apply(On{"click": func() { setShowKey(true) }}),
-								Icon("eye", 14),
-								Text("Reveal private key"),
-							)
-						}),
-					),
 				),
 
 				// QR Code
@@ -219,7 +290,55 @@ func PeerConfigView(ifaceID, peerID string) loom.Node {
 						})),
 					),
 				),
+
+				// Setup instructions + app links
+				Div(
+					Apply(Attr{"class": "lg:col-span-2"}),
+					Card(
+						CardHeader("Setup Instructions"),
+						Div(
+							Apply(Attr{"class": "space-y-4 text-sm text-ink-2"}),
+							setupStep("1", "Install WireGuard", "Download and install the WireGuard app for your platform."),
+							Div(
+								Apply(Attr{"class": "grid grid-cols-2 sm:grid-cols-4 gap-3 ml-9"}),
+								appLink("macOS", "https://itunes.apple.com/us/app/wireguard/id1451685025?ls=1&mt=12"),
+								appLink("iOS", "https://itunes.apple.com/us/app/wireguard/id1441195209?ls=1&mt=8"),
+								appLink("Android", "https://play.google.com/store/apps/details?id=com.wireguard.android"),
+								appLink("Windows", "https://download.wireguard.com/windows-client/wireguard-installer.exe"),
+							),
+							setupStep("2", "Add Tunnel", "Open WireGuard, tap + or \"Add Tunnel\", then either scan the QR code above or import the downloaded .conf file."),
+							setupStep("3", "Activate", "Toggle the tunnel on. You should see a handshake within a few seconds confirming the connection is active."),
+						),
+					),
+				),
 			)
 		}),
+	)
+}
+
+func setupStep(number, title, description string) loom.Node {
+	return Div(
+		Apply(Attr{"class": "flex gap-3"}),
+		Div(
+			Apply(Attr{"class": "flex-shrink-0 w-6 h-6 rounded-full bg-wg-600/15 text-wg-400 text-xs font-bold flex items-center justify-center mt-0.5"}),
+			Text(number),
+		),
+		Div(
+			Div(Apply(Attr{"class": "font-medium text-ink-1"}), Text(title)),
+			Div(Apply(Attr{"class": "text-ink-3 mt-0.5"}), Text(description)),
+		),
+	)
+}
+
+func appLink(label, url string) loom.Node {
+	return Elem("a",
+		Apply(Attr{
+			"href":   url,
+			"target": "_blank",
+			"rel":    "noopener noreferrer",
+			"class":  "flex items-center justify-center gap-2 px-4 py-3 bg-surface-2 border border-line-1 rounded-lg text-sm font-medium text-ink-2 hover:text-wg-500 hover:border-wg-500/40 transition-colors",
+		}),
+		Text(label),
+		Icon("external-link", 14),
 	)
 }
