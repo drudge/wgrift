@@ -57,6 +57,7 @@ func SettingsView() loom.Node {
 			return Div(
 				Apply(Attr{"class": "space-y-6"}),
 				externalURLSection(settings),
+				smtpSection(settings),
 				oidcProvidersSection(settings),
 			)
 		}),
@@ -268,6 +269,317 @@ func oidcProvidersSection(settings func() *settingsData) loom.Node {
 					Fragment(cards...),
 				)
 			}(),
+		),
+	)
+}
+
+// Package-level state for SMTP settings form
+var settingsShowSMTPForm bool
+
+func smtpSection(settings func() *settingsData) loom.Node {
+	return Card(
+		CardHeader("Email (SMTP)",
+			func() loom.Node {
+				s := settings()
+				if s != nil && s.SMTP != nil && s.SMTP.Host != "" {
+					return Div(
+						Apply(Attr{"class": "flex items-center gap-2"}),
+						Btn("Edit", "ghost", func() {
+							settingsShowSMTPForm = !settingsShowSMTPForm
+							refreshRoute()
+						}),
+						Btn("Remove", "danger", func() {
+							ConfirmAction("Remove SMTP configuration? Email features will be disabled.", func() {
+								go func() {
+									apiFetch("DELETE", "/api/v1/settings/smtp", nil, nil)
+									settingsShowSMTPForm = false
+									setSmtpEnabled(false)
+									refreshRoute()
+								}()
+							})
+						}),
+					)
+				}
+				return Btn("Configure", "primary", func() {
+					settingsShowSMTPForm = !settingsShowSMTPForm
+					refreshRoute()
+				})
+			}(),
+		),
+
+		// Current config display
+		func() loom.Node {
+			s := settings()
+			if s == nil || s.SMTP == nil || s.SMTP.Host == "" {
+				if !settingsShowSMTPForm {
+					return Div(
+						Apply(Attr{"class": "text-sm text-ink-3 py-4 text-center"}),
+						Text("No SMTP server configured. Email features are disabled."),
+					)
+				}
+				return Span()
+			}
+			if settingsShowSMTPForm {
+				return Span()
+			}
+			return Div(
+				Apply(Attr{"class": "space-y-1 text-sm"}),
+				smtpInfoRow("Host", fmt.Sprintf("%s:%s", s.SMTP.Host, s.SMTP.Port)),
+				smtpInfoRow("From", s.SMTP.From),
+				smtpInfoRow("Username", func() string {
+					if s.SMTP.Username == "" {
+						return "(none)"
+					}
+					return s.SMTP.Username
+				}()),
+				smtpInfoRow("Password", func() string {
+					if s.SMTP.HasPassword {
+						return "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"
+					}
+					return "(none)"
+				}()),
+				smtpInfoRow("TLS", s.SMTP.TLS),
+				Div(
+					Apply(Attr{"class": "pt-3"}),
+					smtpTestButton(),
+				),
+			)
+		}(),
+
+		// Edit/create form
+		func() loom.Node {
+			if !settingsShowSMTPForm {
+				return Span()
+			}
+			s := settings()
+			var existing *smtpSettingsData
+			if s != nil {
+				existing = s.SMTP
+			}
+			return Div(
+				Apply(Attr{"class": "mt-2"}),
+				smtpSettingsForm(existing),
+			)
+		}(),
+	)
+}
+
+func smtpInfoRow(label, value string) loom.Node {
+	return Div(
+		Apply(Attr{"class": "flex items-center gap-3 py-1"}),
+		Span(Apply(Attr{"class": "w-20 text-xs font-medium text-ink-3 uppercase tracking-[0.08em]"}), Text(label)),
+		Span(Apply(Attr{"class": "text-xs text-ink-2 font-mono"}), Text(value)),
+	)
+}
+
+func smtpTestButton() loom.Node {
+	testTo, setTestTo := Signal("")
+	testing, setTesting := Signal(false)
+	testResult, setTestResult := Signal("")
+	showTestInput, setShowTestInput := Signal(false)
+
+	return Div(
+		Bind(func() loom.Node {
+			show := showTestInput()
+			isTesting := testing()
+			resultMsg := testResult()
+
+			// Toggle visibility via CSS, keeping identical DOM structure
+			btnRowCls := "flex items-center gap-2"
+			initBtnCls := "inline-flex items-center justify-center text-xs font-medium rounded-md transition-all duration-100 cursor-pointer px-3.5 py-2 text-ink-2 hover:text-ink-1 hover:bg-surface-2"
+			if show {
+				initBtnCls = "hidden"
+			} else {
+				btnRowCls = "hidden"
+			}
+
+			resultCls := "hidden"
+			if show && resultMsg != "" {
+				if resultMsg == "Test email sent!" {
+					resultCls = "text-xs text-green-400 mt-2"
+				} else {
+					resultCls = "text-xs text-red-400 mt-2"
+				}
+			}
+
+			sendBtnLabel := "Send"
+			sendBtnCls := "inline-flex items-center justify-center text-xs font-medium rounded-md transition-all duration-100 cursor-pointer px-3 py-1.5 border border-wg-500/40 text-wg-400 bg-wg-600/10 hover:bg-wg-600/20"
+			if isTesting {
+				sendBtnLabel = "Sending..."
+				sendBtnCls = "inline-flex items-center justify-center text-xs font-medium rounded-md px-3 py-1.5 border border-line-1 text-ink-4 bg-surface-3 cursor-not-allowed"
+			}
+
+			return Div(
+				Button(
+					Apply(Attr{"class": initBtnCls}),
+					Apply(On{"click": func() { setShowTestInput(true) }}),
+					Text("Send Test Email"),
+				),
+				Div(
+					Apply(Attr{"class": btnRowCls}),
+					Input(
+						Apply(Attr{
+							"class":       "flex-1 px-3 py-1.5 bg-surface-0 border border-line-1 rounded-md text-ink-1 text-sm placeholder-ink-4 focus:outline-none focus:border-wg-600/40 transition-colors font-mono",
+							"type":        "email",
+							"placeholder": "test@example.com",
+						}),
+						Apply(On{"input": func(evt *EventInput) {
+							setTestTo(evt.InputValue())
+						}}),
+					),
+					Button(
+						Apply(Attr{"class": sendBtnCls}),
+						Apply(On{"click": func() {
+							if testing() || testTo() == "" {
+								return
+							}
+							setTesting(true)
+							setTestResult("")
+							go func() {
+								var resp apiResponse
+								err := apiFetch("POST", "/api/v1/settings/smtp/test", map[string]string{"to": testTo()}, &resp)
+								setTesting(false)
+								if err != nil {
+									setTestResult(err.Error())
+								} else {
+									setTestResult("Test email sent!")
+								}
+							}()
+						}}),
+						Text(sendBtnLabel),
+					),
+					Button(
+						Apply(Attr{"class": "text-xs text-ink-3 hover:text-ink-1 px-2 py-1.5"}),
+						Apply(On{"click": func() {
+							setShowTestInput(false)
+							setTestResult("")
+						}}),
+						Text("Cancel"),
+					),
+				),
+				Span(Apply(Attr{"class": resultCls}), Text(resultMsg)),
+			)
+		}),
+	)
+}
+
+func smtpSettingsForm(existing *smtpSettingsData) loom.Node {
+	initHost := ""
+	initPort := "587"
+	initUsername := ""
+	initFrom := ""
+	initTLS := "starttls"
+
+	if existing != nil && existing.Host != "" {
+		initHost = existing.Host
+		initPort = existing.Port
+		initUsername = existing.Username
+		initFrom = existing.From
+		initTLS = existing.TLS
+	}
+
+	host, setHost := Signal(initHost)
+	port, setPort := Signal(initPort)
+	username, setUsername := Signal(initUsername)
+	password, setPassword := Signal("")
+	from, setFrom := Signal(initFrom)
+	tlsMode, setTLSMode := Signal(initTLS)
+	errMsg, setErrMsg := Signal(ErrorInfo{})
+
+	isEdit := existing != nil && existing.Host != ""
+
+	FocusInput(`input[placeholder="smtp.example.com"]`)
+
+	doSave := func() {
+		setErrMsg(ErrorInfo{})
+		if host() == "" {
+			setErrMsg(ErrorInfo{Message: "Host is required"})
+			return
+		}
+		if from() == "" {
+			setErrMsg(ErrorInfo{Message: "From address is required"})
+			return
+		}
+		if !isEdit && password() == "" && username() != "" {
+			setErrMsg(ErrorInfo{Message: "Password is required for authenticated SMTP"})
+			return
+		}
+
+		body := map[string]string{
+			"host":     host(),
+			"port":     port(),
+			"username": username(),
+			"password": password(),
+			"from":     from(),
+			"tls":      tlsMode(),
+		}
+
+		go func() {
+			var resp apiResponse
+			err := apiFetch("PUT", "/api/v1/settings/smtp", body, &resp)
+			if err != nil {
+				setErrMsg(apiErrorInfo(err))
+				return
+			}
+			if resp.Error != "" {
+				setErrMsg(ErrorInfo{Message: resp.Error})
+				return
+			}
+			settingsShowSMTPForm = false
+			setSmtpEnabled(true)
+			showToast("SMTP settings saved")
+			refreshRoute()
+		}()
+	}
+
+	return Div(
+		Apply(Attr{"class": "bg-surface-0 rounded-lg p-5 border border-line-1"}),
+		Div(
+			Apply(Attr{"class": "text-sm font-semibold text-ink-1 mb-4"}),
+			Text(func() string {
+				if isEdit {
+					return "Edit SMTP Settings"
+				}
+				return "Configure SMTP"
+			}()),
+		),
+		ErrorAlert(errMsg),
+		Div(
+			Apply(Attr{"class": "grid grid-cols-1 sm:grid-cols-2 gap-4"}),
+			FormField("Host", "text", "smtp.example.com", host, func(v string) { setHost(v) }),
+			FormField("Port", "text", "587", port, func(v string) { setPort(v) }),
+			FormField("From Address", "email", "wgrift@example.com", from, func(v string) { setFrom(v) }),
+			Div(
+				Apply(Attr{"class": "mb-4"}),
+				Elem("label", Apply(Attr{"class": "block text-[11px] font-semibold text-ink-3 mb-2 uppercase tracking-[0.08em]"}), Text("TLS Mode")),
+				Elem("select",
+					Apply(Attr{
+						"class": "w-full px-3.5 py-2.5 bg-surface-0 border border-line-1 rounded-md text-ink-1 text-sm focus:outline-none focus:border-wg-600/40 focus:ring-1 focus:ring-wg-600/15 transition-colors",
+					}),
+					Apply(On{"change": func(evt *EventInput) {
+						setTLSMode(evt.InputValue())
+					}}),
+					Elem("option", Apply(Attr{"value": "starttls"}), Text("STARTTLS (port 587)")),
+					Elem("option", Apply(Attr{"value": "tls"}), Text("TLS (port 465)")),
+					Elem("option", Apply(Attr{"value": "none"}), Text("None (port 25)")),
+				),
+			),
+			FormField("Username", "text", "username (optional)", username, func(v string) { setUsername(v) }),
+			func() loom.Node {
+				placeholder := "password"
+				if isEdit {
+					placeholder = "leave blank to keep current"
+				}
+				return FormField("Password", "password", placeholder, password, func(v string) { setPassword(v) })
+			}(),
+		),
+		Div(
+			Apply(Attr{"class": "flex gap-2 mt-2"}),
+			Btn("Save", "primary", doSave),
+			Btn("Cancel", "ghost", func() {
+				settingsShowSMTPForm = false
+				refreshRoute()
+			}),
 		),
 	)
 }

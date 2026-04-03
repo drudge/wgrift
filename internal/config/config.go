@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -16,6 +17,7 @@ type Config struct {
 	Logging    LoggingConfig    `yaml:"logging"`
 	Backup     BackupConfig     `yaml:"backup"`
 	UniFi      UniFiConfig      `yaml:"unifi"`
+	SMTP       SMTPConfig       `yaml:"smtp"`
 }
 
 type ServerConfig struct {
@@ -85,6 +87,35 @@ type UniFiConfig struct {
 	Username      string `yaml:"username"`
 	PasswordFile  string `yaml:"password_file"`
 	Site          string `yaml:"site"`
+}
+
+type SMTPConfig struct {
+	Host         string `yaml:"host"`
+	Port         int    `yaml:"port"`
+	Username     string `yaml:"username"`
+	PasswordFile string `yaml:"password_file"`
+	From         string `yaml:"from"`
+	TLS          string `yaml:"tls"` // "none", "starttls", "tls"
+}
+
+// Enabled returns true if SMTP is configured.
+func (c *SMTPConfig) Enabled() bool {
+	return c.Host != ""
+}
+
+// Password returns the SMTP password from env var or file.
+func (c *SMTPConfig) Password() (string, error) {
+	if pw := os.Getenv("WGRIFT_SMTP_PASSWORD"); pw != "" {
+		return pw, nil
+	}
+	if c.PasswordFile == "" {
+		return "", nil
+	}
+	data, err := os.ReadFile(c.PasswordFile)
+	if err != nil {
+		return "", fmt.Errorf("reading SMTP password file: %w", err)
+	}
+	return strings.TrimSpace(string(data)), nil
 }
 
 func Defaults() Config {

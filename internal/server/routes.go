@@ -41,6 +41,7 @@ func (s *Server) registerRoutes() {
 	protected.HandleFunc("PUT /api/v1/interfaces/{ifaceId}/peers/{id}/private-key", s.handleSetPeerPrivateKey)
 	protected.HandleFunc("GET /api/v1/interfaces/{ifaceId}/peers/{id}/config", s.handlePeerConfig)
 	protected.HandleFunc("GET /api/v1/interfaces/{ifaceId}/peers/{id}/qr", s.handlePeerQR)
+	protected.HandleFunc("POST /api/v1/interfaces/{ifaceId}/peers/{id}/email", s.handleEmailPeerConfig)
 
 	// Connection logs
 	protected.HandleFunc("GET /api/v1/interfaces/{ifaceId}/logs", s.handleInterfaceLogs)
@@ -58,6 +59,11 @@ func (s *Server) registerRoutes() {
 	protected.HandleFunc("POST /api/v1/settings/oidc", s.handleCreateOIDCProvider)
 	protected.HandleFunc("PUT /api/v1/settings/oidc/{id}", s.handleUpdateOIDCProvider)
 	protected.HandleFunc("DELETE /api/v1/settings/oidc/{id}", s.handleDeleteOIDCProvider)
+
+	// SMTP settings
+	protected.HandleFunc("PUT /api/v1/settings/smtp", s.handleUpdateSMTP)
+	protected.HandleFunc("POST /api/v1/settings/smtp/test", s.handleTestSMTP)
+	protected.HandleFunc("DELETE /api/v1/settings/smtp", s.handleDeleteSMTP)
 
 	// Wrap protected routes with auth + CSRF middleware
 	authed := authRequired(s.auth, cookieName)(csrfProtect(protected))

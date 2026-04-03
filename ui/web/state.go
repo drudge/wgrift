@@ -19,6 +19,7 @@ var (
 	preloadOIDCProviders    []oidcProviderInfo
 	preloadLocalAuthEnabled bool
 	preloadDemoMode         bool
+	preloadSMTPEnabled      bool
 )
 
 // Loom reactive signals — set by initState, populated from preload values.
@@ -33,6 +34,8 @@ var (
 	setAppLoading      func(bool)
 	appError           func() string
 	setAppError        func(string)
+	smtpEnabled        func() bool
+	setSmtpEnabled     func(bool)
 )
 
 func initState() {
@@ -41,6 +44,7 @@ func initState() {
 	needsSetup, setNeedsSetup = Signal(preloadNeedsSetup)
 	appLoading, setAppLoading = Signal(false)
 	appError, setAppError = Signal("")
+	smtpEnabled, setSmtpEnabled = Signal(preloadSMTPEnabled)
 	csrfToken = preloadCSRF
 }
 
@@ -86,6 +90,7 @@ func checkSessionPreload() {
 		preloadUser = &session.User
 		preloadCSRF = session.CSRFToken
 		preloadAuthed = true
+		preloadSMTPEnabled = session.SMTPEnabled
 	}
 }
 

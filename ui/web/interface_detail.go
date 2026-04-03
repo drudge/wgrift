@@ -612,6 +612,10 @@ func peerCardList(ifaceID string, peers []peerStatusData) loom.Node {
 					return Span()
 				}(),
 				Span(Text(fmt.Sprintf("↓%s  ↑%s", FormatBytes(ps.TransferRx), FormatBytes(ps.TransferTx)))),
+			),
+			// IP badges row (own row on mobile for tap targets)
+			Div(
+				Apply(Attr{"class": "flex flex-wrap items-center gap-2 mt-2 sm:mt-1 pl-[22px] text-xs"}),
 				func() loom.Node {
 					if ips := parseCSV(ps.Peer.AllowedIPs); len(ips) > 0 {
 						n := len(ips)

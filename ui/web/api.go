@@ -171,8 +171,9 @@ type apiResponse struct {
 }
 
 type sessionData struct {
-	User      userData `json:"user"`
-	CSRFToken string   `json:"csrf_token"`
+	User        userData `json:"user"`
+	CSRFToken   string   `json:"csrf_token"`
+	SMTPEnabled bool     `json:"smtp_enabled"`
 }
 
 type userData struct {
@@ -206,6 +207,16 @@ type settingsData struct {
 	ExternalURL      string             `json:"external_url"`
 	OIDCProviders    []oidcProviderData `json:"oidc_providers"`
 	LocalAuthEnabled bool               `json:"local_auth_enabled"`
+	SMTP             *smtpSettingsData  `json:"smtp"`
+}
+
+type smtpSettingsData struct {
+	Host        string `json:"host"`
+	Port        string `json:"port"`
+	Username    string `json:"username"`
+	HasPassword bool   `json:"has_password"`
+	From        string `json:"from"`
+	TLS         string `json:"tls"`
 }
 
 type oidcProviderData struct {
