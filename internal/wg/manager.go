@@ -409,6 +409,7 @@ type PeerStatus struct {
 	TransferRx    int64       `json:"transfer_rx"`
 	TransferTx    int64       `json:"transfer_tx"`
 	Connected     bool        `json:"connected"`
+	Endpoint      string      `json:"endpoint,omitempty"`
 }
 
 // GetStatus returns live status for an interface from wgctrl.
@@ -470,6 +471,9 @@ func (m *Manager) GetStatus(interfaceID string) (*InterfaceStatus, error) {
 			ps.LastHandshake = live.LastHandshakeTime
 			ps.TransferRx = live.ReceiveBytes
 			ps.TransferTx = live.TransmitBytes
+			if live.Endpoint != nil {
+				ps.Endpoint = live.Endpoint.IP.String()
+			}
 			if !live.LastHandshakeTime.IsZero() && now.Sub(live.LastHandshakeTime) < threshold {
 				ps.Connected = true
 			}

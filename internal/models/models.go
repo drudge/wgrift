@@ -107,6 +107,7 @@ type ConnectionLog struct {
 	PeerName    string    `json:"peer_name"`
 	InterfaceID string    `json:"interface_id"`
 	Event       string    `json:"event"`
+	Endpoint    string    `json:"endpoint,omitempty"`
 	TransferRx  int64     `json:"transfer_rx"`
 	TransferTx  int64     `json:"transfer_tx"`
 	RecordedAt  time.Time `json:"recorded_at"`

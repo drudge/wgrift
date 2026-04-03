@@ -12,9 +12,9 @@ func (s *SQLiteStore) CreateConnectionLog(log *models.ConnectionLog) error {
 	log.RecordedAt = now
 
 	result, err := s.db.Exec(`
-		INSERT INTO connection_logs (peer_id, interface_id, event, transfer_rx, transfer_tx, recorded_at)
-		VALUES (?, ?, ?, ?, ?, ?)`,
-		log.PeerID, log.InterfaceID, log.Event,
+		INSERT INTO connection_logs (peer_id, interface_id, event, endpoint, transfer_rx, transfer_tx, recorded_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		log.PeerID, log.InterfaceID, log.Event, log.Endpoint,
 		log.TransferRx, log.TransferTx, log.RecordedAt,
 	)
 	if err != nil {
@@ -35,7 +35,7 @@ func (s *SQLiteStore) ListConnectionLogs(interfaceID string, limit, offset int) 
 	}
 
 	rows, err := s.db.Query(`
-		SELECT cl.id, cl.peer_id, COALESCE(p.name, ''), cl.interface_id, cl.event, cl.transfer_rx, cl.transfer_tx, cl.recorded_at
+		SELECT cl.id, cl.peer_id, COALESCE(p.name, ''), cl.interface_id, cl.event, cl.endpoint, cl.transfer_rx, cl.transfer_tx, cl.recorded_at
 		FROM connection_logs cl
 		LEFT JOIN peers p ON p.id = cl.peer_id
 		WHERE cl.interface_id = ?
@@ -56,7 +56,7 @@ func (s *SQLiteStore) ListPeerConnectionLogs(peerID string, limit, offset int) (
 	}
 
 	rows, err := s.db.Query(`
-		SELECT cl.id, cl.peer_id, COALESCE(p.name, ''), cl.interface_id, cl.event, cl.transfer_rx, cl.transfer_tx, cl.recorded_at
+		SELECT cl.id, cl.peer_id, COALESCE(p.name, ''), cl.interface_id, cl.event, cl.endpoint, cl.transfer_rx, cl.transfer_tx, cl.recorded_at
 		FROM connection_logs cl
 		LEFT JOIN peers p ON p.id = cl.peer_id
 		WHERE cl.peer_id = ?
@@ -78,11 +78,15 @@ func (s *SQLiteStore) DeleteOldConnectionLogs(before time.Time) error {
 	return nil
 }
 
-func scanConnectionLogs(rows interface{ Next() bool; Scan(...any) error; Err() error }) ([]models.ConnectionLog, error) {
+func scanConnectionLogs(rows interface {
+	Next() bool
+	Scan(...any) error
+	Err() error
+}) ([]models.ConnectionLog, error) {
 	var result []models.ConnectionLog
 	for rows.Next() {
 		var log models.ConnectionLog
-		if err := rows.Scan(&log.ID, &log.PeerID, &log.PeerName, &log.InterfaceID, &log.Event,
+		if err := rows.Scan(&log.ID, &log.PeerID, &log.PeerName, &log.InterfaceID, &log.Event, &log.Endpoint,
 			&log.TransferRx, &log.TransferTx, &log.RecordedAt); err != nil {
 			return nil, fmt.Errorf("scanning connection log: %w", err)
 		}

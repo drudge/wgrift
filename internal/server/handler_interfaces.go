@@ -264,4 +264,6 @@ func (s *Server) handleInterfaceStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, status)
+	// Kick the poller so connection logs are updated promptly.
+	s.poller.Kick()
 }
