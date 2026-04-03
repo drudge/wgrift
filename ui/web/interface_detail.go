@@ -619,9 +619,9 @@ func peerCardList(ifaceID string, peers []peerStatusData) loom.Node {
 				func() loom.Node {
 					if ips := parseCSV(ps.Peer.AllowedIPs); len(ips) > 0 {
 						n := len(ips)
-						label := fmt.Sprintf("%d Server IPs", n)
+						label := fmt.Sprintf("%d Allowed IPs", n)
 						if n == 1 {
-							label = "1 Server IP"
+							label = "1 Allowed IP"
 						}
 						return Tooltip(Badge(label, ""), ips)
 					}
@@ -630,9 +630,9 @@ func peerCardList(ifaceID string, peers []peerStatusData) loom.Node {
 				func() loom.Node {
 					if ips := parseCSV(ps.Peer.ClientAllowedIPs); len(ips) > 0 {
 						n := len(ips)
-						label := fmt.Sprintf("%d Client IPs", n)
+						label := fmt.Sprintf("%d Routed IPs", n)
 						if n == 1 {
-							label = "1 Client IP"
+							label = "1 Routed IP"
 						}
 						return Tooltip(Badge(label, ""), ips)
 					}
