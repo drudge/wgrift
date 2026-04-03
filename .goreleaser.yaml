@@ -1,0 +1,62 @@
+version: 2
+
+before:
+  hooks:
+    - sh -c 'GOOS=js GOARCH=wasm go build -ldflags "-s -w -X github.com/drudge/wgrift/pkg/version.Version={{ .Version }} -X github.com/drudge/wgrift/pkg/version.Commit={{ .Commit }} -X github.com/drudge/wgrift/pkg/version.Date={{ .Date }}" -o ui/web/wgrift.wasm ./ui/web'
+    - sh -c 'cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" ui/web/wasm_exec.js 2>/dev/null || cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" ui/web/wasm_exec.js'
+
+builds:
+  - id: wgrift
+    main: ./cmd/wgrift
+    binary: wgrift
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/drudge/wgrift/pkg/version.Version={{.Version}}
+      - -X github.com/drudge/wgrift/pkg/version.Commit={{.Commit}}
+      - -X github.com/drudge/wgrift/pkg/version.Date={{.Date}}
+
+archives:
+  - id: default
+    formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+    files:
+      - src: deploy/wgrift.service
+        dst: .
+      - src: deploy/config.yaml
+        dst: .
+      - src: deploy/install.sh
+        dst: .
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+release:
+  github:
+    owner: drudge
+    name: wgrift
+  draft: false
+  prerelease: auto
+  mode: replace
+  header: |
+    ## What's Changed
+  footer: |
+    ---
+    **Full Changelog**: https://github.com/drudge/wgrift/compare/{{ .PreviousTag }}...{{ .Tag }}
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "^chore:"
