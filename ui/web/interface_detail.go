@@ -251,6 +251,9 @@ func interfaceDetailContent(ifaceID string, s *interfaceStatusData, status Acces
 					PeerForm(ifaceID, s.Interface.Address, usedAddrs, func() {
 						detailEditPeerID = ""
 						refreshRoute()
+					}, func() {
+						detailEditPeerID = ""
+						refreshRoute()
 					}),
 				)
 			}
@@ -281,19 +284,19 @@ func interfaceEditForm(ifaceID string, iface interfaceData) loom.Node {
 	dns, setDNS := Signal(iface.DNS)
 	mtu, setMTU := Signal(strconv.Itoa(iface.MTU))
 	endpoint, setEndpoint := Signal(iface.Endpoint)
-	errMsg, setErrMsg := Signal("")
+	errMsg, setErrMsg := Signal(ErrorInfo{})
 	FocusInput(`input[placeholder="10.100.0.1/24"]`)
 
 	doSave := func() {
-		setErrMsg("")
+		setErrMsg(ErrorInfo{})
 		portVal, err := strconv.Atoi(port())
 		if err != nil || portVal < 1 || portVal > 65535 {
-			setErrMsg("Port must be a number between 1 and 65535")
+			setErrMsg(ErrorInfo{Message: "Port must be a number between 1 and 65535"})
 			return
 		}
 		mtuVal, err := strconv.Atoi(mtu())
 		if err != nil || mtuVal < 1 {
-			setErrMsg("MTU must be a positive number")
+			setErrMsg(ErrorInfo{Message: "MTU must be a positive number"})
 			return
 		}
 		go func() {
@@ -306,11 +309,11 @@ func interfaceEditForm(ifaceID string, iface interfaceData) loom.Node {
 				"endpoint":    endpoint(),
 			}, &resp)
 			if err != nil {
-				setErrMsg(err.Error())
+				setErrMsg(apiErrorInfo(err))
 				return
 			}
 			if resp.Error != "" {
-				setErrMsg(resp.Error)
+				setErrMsg(ErrorInfo{Message: resp.Error})
 				return
 			}
 			detailEditInterface = false
@@ -376,15 +379,15 @@ func truncateKey(key string) string {
 
 func peerSetKeyForm(ifaceID, peerID, peerName string) loom.Node {
 	privKey, setPrivKey := Signal("")
-	errMsg, setErrMsg := Signal("")
+	errMsg, setErrMsg := Signal(ErrorInfo{})
 	success, setSuccess := Signal(false)
 	FocusInput(`input[placeholder="base64-encoded WireGuard private key"]`)
 
 	doSet := func() {
-		setErrMsg("")
+		setErrMsg(ErrorInfo{})
 		setSuccess(false)
 		if privKey() == "" {
-			setErrMsg("Private key is required")
+			setErrMsg(ErrorInfo{Message: "Private key is required"})
 			return
 		}
 		go func() {
@@ -393,11 +396,11 @@ func peerSetKeyForm(ifaceID, peerID, peerName string) loom.Node {
 				"private_key": privKey(),
 			}, &resp)
 			if err != nil {
-				setErrMsg(err.Error())
+				setErrMsg(apiErrorInfo(err))
 				return
 			}
 			if resp.Error != "" {
-				setErrMsg(resp.Error)
+				setErrMsg(ErrorInfo{Message: resp.Error})
 				return
 			}
 			setSuccess(true)

@@ -192,21 +192,21 @@ func createUserForm() loom.Node {
 	password, setPassword := Signal("")
 	displayName, setDisplayName := Signal("")
 	role, setRole := Signal("viewer")
-	errMsg, setErrMsg := Signal("")
+	errMsg, setErrMsg := Signal(ErrorInfo{})
 	FocusInput(`input[placeholder="jdoe"]`)
 
 	doCreate := func() {
-		setErrMsg("")
+		setErrMsg(ErrorInfo{})
 		if username() == "" {
-			setErrMsg("Username is required")
+			setErrMsg(ErrorInfo{Message: "Username is required"})
 			return
 		}
 		if password() == "" {
-			setErrMsg("Password is required")
+			setErrMsg(ErrorInfo{Message: "Password is required"})
 			return
 		}
 		if len(password()) < 16 {
-			setErrMsg("Password must be at least 16 characters")
+			setErrMsg(ErrorInfo{Message: "Password must be at least 16 characters"})
 			return
 		}
 		go func() {
@@ -218,11 +218,11 @@ func createUserForm() loom.Node {
 				"role":         role(),
 			}, &resp)
 			if err != nil {
-				setErrMsg(err.Error())
+				setErrMsg(apiErrorInfo(err))
 				return
 			}
 			if resp.Error != "" {
-				setErrMsg(resp.Error)
+				setErrMsg(ErrorInfo{Message: resp.Error})
 				return
 			}
 			usersShowForm = false
@@ -266,19 +266,19 @@ func createUserForm() loom.Node {
 
 func changePasswordForm(userID, username string) loom.Node {
 	password, setPassword := Signal("")
-	errMsg, setErrMsg := Signal("")
+	errMsg, setErrMsg := Signal(ErrorInfo{})
 	success, setSuccess := Signal(false)
 	FocusInput(`input[placeholder="min 16 characters"]`)
 
 	doChange := func() {
-		setErrMsg("")
+		setErrMsg(ErrorInfo{})
 		setSuccess(false)
 		if password() == "" {
-			setErrMsg("Password is required")
+			setErrMsg(ErrorInfo{Message: "Password is required"})
 			return
 		}
 		if len(password()) < 16 {
-			setErrMsg("Password must be at least 16 characters")
+			setErrMsg(ErrorInfo{Message: "Password must be at least 16 characters"})
 			return
 		}
 		go func() {
@@ -287,11 +287,11 @@ func changePasswordForm(userID, username string) loom.Node {
 				"password": password(),
 			}, &resp)
 			if err != nil {
-				setErrMsg(err.Error())
+				setErrMsg(apiErrorInfo(err))
 				return
 			}
 			if resp.Error != "" {
-				setErrMsg(resp.Error)
+				setErrMsg(ErrorInfo{Message: resp.Error})
 				return
 			}
 			setSuccess(true)

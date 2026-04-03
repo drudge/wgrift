@@ -4,6 +4,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"syscall/js"
 	"time"
@@ -65,7 +66,12 @@ func apiFetchWithTimeout(method, path string, body any, result any, timeout time
 		textPromise.Call("then", js.FuncOf(func(this js.Value, args []js.Value) any {
 			responseText = args[0].String()
 			if status >= 400 {
-				done <- fmt.Errorf("HTTP %d: %s", status, responseText)
+				msg := extractErrorMessage(responseText)
+				done <- &apiError{
+					Status:  status,
+					Message: msg,
+					Raw:     fmt.Sprintf("HTTP %d: %s", status, responseText),
+				}
 			} else {
 				done <- nil
 			}
@@ -95,6 +101,66 @@ func apiFetchWithTimeout(method, path string, body any, result any, timeout time
 	}
 
 	return nil
+}
+
+// extractErrorMessage tries to pull a human-readable message from a JSON error response.
+// Handles wgRift format {"error":"msg"} and proxy/ingress format {"message":"...", "description":"..."}.
+func extractErrorMessage(body string) string {
+	var obj map[string]json.RawMessage
+	if json.Unmarshal([]byte(body), &obj) != nil {
+		return body
+	}
+
+	// wgRift: {"error": "human-readable string"}
+	if raw, ok := obj["error"]; ok {
+		var s string
+		if json.Unmarshal(raw, &s) == nil && s != "" {
+			return s
+		}
+	}
+
+	// Proxy/ingress: {"message": "Bad Request", "description": "The server did not understand the request"}
+	var message, description string
+	if raw, ok := obj["message"]; ok {
+		json.Unmarshal(raw, &message)
+	}
+	if raw, ok := obj["description"]; ok {
+		json.Unmarshal(raw, &description)
+	}
+	if description != "" {
+		return description
+	}
+	if message != "" {
+		return message
+	}
+
+	return body
+}
+
+// apiError is returned when the server responds with an HTTP error status.
+type apiError struct {
+	Status  int
+	Message string // human-friendly, extracted from JSON {"error":"..."}
+	Raw     string // full response body for debugging
+}
+
+func (e *apiError) Error() string {
+	return e.Message
+}
+
+// ErrorInfo holds a user-facing error message and optional technical detail.
+type ErrorInfo struct {
+	Message string
+	Detail  string
+}
+
+// apiErrorInfo extracts ErrorInfo from an error, including raw details if available.
+func apiErrorInfo(err error) ErrorInfo {
+	var ae *apiError
+	if errors.As(err, &ae) {
+		return ErrorInfo{Message: ae.Message, Detail: ae.Raw}
+	}
+	return ErrorInfo{Message: err.Error()}
 }
 
 // API response types

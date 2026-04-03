@@ -473,21 +473,46 @@ func RouteView(when func() bool, fn func() loom.Node) loom.Node {
 	})
 }
 
-// ErrorAlert renders an error message.
-func ErrorAlert(errMsg Accessor[string]) loom.Node {
+// ErrorAlert renders an error message with optional technical details disclosure.
+func ErrorAlert(errInfo Accessor[ErrorInfo]) loom.Node {
 	return Bind(func() loom.Node {
-		msg := errMsg()
-		if msg == "" {
-			return Div(
-				Apply(Attr{"class": "hidden"}),
-				Span(Apply(Attr{"class": "shrink-0"}), Apply(innerHTML(""))),
-				Span(Text("")),
-			)
+		info := errInfo()
+
+		// Single return — compute all values up front, toggle via CSS classes
+		wrapperCls := "hidden"
+		iconSVG := ""
+		msg := ""
+		detailCls := "hidden"
+		detailText := ""
+
+		if info.Message != "" {
+			wrapperCls = "mb-5 p-3.5 bg-red-500/10 border border-red-500/20 rounded-md text-red-400 text-sm"
+			iconSVG = icons["triangle-alert"](15)
+			msg = info.Message
+			if info.Detail != "" {
+				detailCls = "mt-2 pt-2 border-t border-red-500/20"
+				detailText = info.Detail
+			}
 		}
+
 		return Div(
-			Apply(Attr{"class": "mb-5 p-3.5 bg-red-500/10 border border-red-500/20 rounded-md text-red-400 text-sm flex items-center gap-3"}),
-			Span(Apply(Attr{"class": "shrink-0 text-red-400"}), Apply(innerHTML(icons["triangle-alert"](15)))),
-			Span(Text(msg)),
+			Apply(Attr{"class": wrapperCls}),
+			Div(
+				Apply(Attr{"class": "flex items-center gap-3"}),
+				Span(Apply(Attr{"class": "shrink-0 text-red-400"}), Apply(innerHTML(iconSVG))),
+				Span(Text(msg)),
+			),
+			Elem("details",
+				Apply(Attr{"class": detailCls}),
+				Elem("summary",
+					Apply(Attr{"class": "cursor-pointer text-red-400/70 hover:text-red-400 select-none text-xs"}),
+					Text("Technical details"),
+				),
+				Elem("pre",
+					Apply(Attr{"class": "mt-1 text-[11px] font-mono text-red-400/60 whitespace-pre-wrap break-all"}),
+					Text(detailText),
+				),
+			),
 		)
 	})
 }

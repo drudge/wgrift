@@ -72,7 +72,7 @@ func PeerEditForm(ifaceID string, peer peerData, onSaved func()) loom.Node {
 		kaDefault = strconv.Itoa(peer.PersistentKeepalive)
 	}
 	keepalive, setKeepalive := Signal(kaDefault)
-	errMsg, setErrMsg := Signal("")
+	errMsg, setErrMsg := Signal(ErrorInfo{})
 	FocusInput(`input[placeholder="Phone, Laptop, etc."]`)
 
 	// Parse existing server-side allowed IPs into chips
@@ -129,7 +129,7 @@ func PeerEditForm(ifaceID string, peer peerData, onSaved func()) loom.Node {
 			return
 		}
 		if _, _, err := net.ParseCIDR(ip); err != nil {
-			setErrMsg(fmt.Sprintf("Invalid CIDR: %s", ip))
+			setErrMsg(ErrorInfo{Message: fmt.Sprintf("Invalid CIDR: %s", ip)})
 			return
 		}
 		for _, existing := range allowedIPs {
@@ -153,7 +153,7 @@ func PeerEditForm(ifaceID string, peer peerData, onSaved func()) loom.Node {
 			return
 		}
 		if _, _, err := net.ParseCIDR(ip); err != nil {
-			setErrMsg(fmt.Sprintf("Invalid CIDR: %s", ip))
+			setErrMsg(ErrorInfo{Message: fmt.Sprintf("Invalid CIDR: %s", ip)})
 			return
 		}
 		for _, existing := range clientAllowedIPs {
@@ -170,7 +170,7 @@ func PeerEditForm(ifaceID string, peer peerData, onSaved func()) loom.Node {
 	}
 
 	doSave := func() {
-		setErrMsg("")
+		setErrMsg(ErrorInfo{})
 		// Flush pending input for server IPs
 		el := js.Global().Get("document").Call("getElementById", inputID)
 		if el.Truthy() {
@@ -199,7 +199,7 @@ func PeerEditForm(ifaceID string, peer peerData, onSaved func()) loom.Node {
 			doRenderChips()
 		}
 		if len(allowedIPs) == 0 {
-			setErrMsg("Tunnel address is required")
+			setErrMsg(ErrorInfo{Message: "Tunnel address is required"})
 			return
 		}
 		go func() {
@@ -223,11 +223,11 @@ func PeerEditForm(ifaceID string, peer peerData, onSaved func()) loom.Node {
 			var resp apiResponse
 			err := apiFetch("PUT", fmt.Sprintf("/api/v1/interfaces/%s/peers/%s", ifaceID, peer.ID), body, &resp)
 			if err != nil {
-				setErrMsg(err.Error())
+				setErrMsg(apiErrorInfo(err))
 				return
 			}
 			if resp.Error != "" {
-				setErrMsg(resp.Error)
+				setErrMsg(ErrorInfo{Message: resp.Error})
 				return
 			}
 			onSaved()
@@ -240,7 +240,7 @@ func PeerEditForm(ifaceID string, peer peerData, onSaved func()) loom.Node {
 			return Span(Apply(Attr{"class": "text-[11px] font-semibold text-ink-3 uppercase tracking-[0.15em]"}), Text(lbl.headerEdit))
 		}),
 
-		ErrorAlert(errMsg),
+		Div(Apply(Attr{"class": "mt-4"}), ErrorAlert(errMsg)),
 
 		// Type selector
 		Bind(func() loom.Node {
@@ -398,14 +398,14 @@ func nextAvailableIP(ifaceAddr string, usedAddrs []string) string {
 	return ""
 }
 
-func PeerForm(ifaceID string, ifaceAddr string, usedAddrs []string, onCreated func()) loom.Node {
+func PeerForm(ifaceID string, ifaceAddr string, usedAddrs []string, onCreated func(), onCancel func()) loom.Node {
 	peerType, setPeerType := Signal("client")
 	name, setName := Signal("")
 	address, setAddress := Signal(nextAvailableIP(ifaceAddr, usedAddrs))
 	dns, setDNS := Signal("")
 	keepalive, setKeepalive := Signal("25")
 	psk, setPSK := Signal(false)
-	errMsg, setErrMsg := Signal("")
+	errMsg, setErrMsg := Signal(ErrorInfo{})
 	FocusInput(`input[placeholder="Phone, Laptop, etc."]`)
 
 	var allowedIPs []string
@@ -439,7 +439,7 @@ func PeerForm(ifaceID string, ifaceAddr string, usedAddrs []string, onCreated fu
 			return
 		}
 		if _, _, err := net.ParseCIDR(ip); err != nil {
-			setErrMsg(fmt.Sprintf("Invalid CIDR: %s", ip))
+			setErrMsg(ErrorInfo{Message: fmt.Sprintf("Invalid CIDR: %s", ip)})
 			return
 		}
 		for _, existing := range allowedIPs {
@@ -463,7 +463,7 @@ func PeerForm(ifaceID string, ifaceAddr string, usedAddrs []string, onCreated fu
 			return
 		}
 		if _, _, err := net.ParseCIDR(ip); err != nil {
-			setErrMsg(fmt.Sprintf("Invalid CIDR: %s", ip))
+			setErrMsg(ErrorInfo{Message: fmt.Sprintf("Invalid CIDR: %s", ip)})
 			return
 		}
 		for _, existing := range clientAllowedIPs {
@@ -480,7 +480,11 @@ func PeerForm(ifaceID string, ifaceAddr string, usedAddrs []string, onCreated fu
 	}
 
 	doAdd := func() {
-		setErrMsg("")
+		setErrMsg(ErrorInfo{})
+		if strings.TrimSpace(name()) == "" {
+			setErrMsg(ErrorInfo{Message: "Name is required"})
+			return
+		}
 		el := js.Global().Get("document").Call("getElementById", inputID)
 		if el.Truthy() {
 			val := el.Get("value").String()
@@ -508,7 +512,7 @@ func PeerForm(ifaceID string, ifaceAddr string, usedAddrs []string, onCreated fu
 			doRenderChips()
 		}
 		if len(allowedIPs) == 0 {
-			setErrMsg("Tunnel address is required")
+			setErrMsg(ErrorInfo{Message: "Tunnel address is required"})
 			return
 		}
 		go func() {
@@ -532,11 +536,11 @@ func PeerForm(ifaceID string, ifaceAddr string, usedAddrs []string, onCreated fu
 			var resp apiResponse
 			err := apiFetch("POST", fmt.Sprintf("/api/v1/interfaces/%s/peers", ifaceID), body, &resp)
 			if err != nil {
-				setErrMsg(err.Error())
+				setErrMsg(apiErrorInfo(err))
 				return
 			}
 			if resp.Error != "" {
-				setErrMsg(resp.Error)
+				setErrMsg(ErrorInfo{Message: resp.Error})
 				return
 			}
 			onCreated()
@@ -549,7 +553,7 @@ func PeerForm(ifaceID string, ifaceAddr string, usedAddrs []string, onCreated fu
 			return Span(Apply(Attr{"class": "text-[11px] font-semibold text-ink-3 uppercase tracking-[0.15em]"}), Text(lbl.headerAdd))
 		}),
 
-		ErrorAlert(errMsg),
+		Div(Apply(Attr{"class": "mt-4"}), ErrorAlert(errMsg)),
 
 		// Type selector
 		Bind(func() loom.Node {
@@ -601,6 +605,7 @@ func PeerForm(ifaceID string, ifaceAddr string, usedAddrs []string, onCreated fu
 				),
 			),
 			Div(Apply(Attr{"class": "flex-1"})),
+			Btn("Cancel", "ghost", onCancel),
 			Bind(func() loom.Node {
 				lbl := labelsForType(peerType())
 				return Btn(lbl.submitAdd, "primary", doAdd)

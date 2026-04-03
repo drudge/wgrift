@@ -14,7 +14,7 @@ import (
 func LoginView() loom.Node {
 	username, setUsername := Signal("")
 	password, setPassword := Signal("")
-	errMsg, setErrMsg := Signal("")
+	errMsg, setErrMsg := Signal(ErrorInfo{})
 	loading, setLoading := Signal(false)
 
 	hasOIDC := len(preloadOIDCProviders) > 0
@@ -29,7 +29,7 @@ func LoginView() loom.Node {
 		if loading() {
 			return
 		}
-		setErrMsg("")
+		setErrMsg(ErrorInfo{})
 		setLoading(true)
 
 		go func() {
@@ -40,12 +40,12 @@ func LoginView() loom.Node {
 			}, &resp)
 
 			if err != nil {
-				setErrMsg("Invalid credentials")
+				setErrMsg(ErrorInfo{Message: "Invalid credentials"})
 				setLoading(false)
 				return
 			}
 			if resp.Error != "" {
-				setErrMsg(resp.Error)
+				setErrMsg(ErrorInfo{Message: resp.Error})
 				setLoading(false)
 				return
 			}
