@@ -296,8 +296,15 @@ var (
 	setToastMsg func(string)
 )
 
+// Celebration toast
+var (
+	celebrationPeer    func() string
+	setCelebrationPeer func(string)
+)
+
 func initToast() {
 	toastMsg, setToastMsg = Signal("")
+	celebrationPeer, setCelebrationPeer = Signal("")
 }
 
 func showToast(msg string) {
@@ -322,6 +329,62 @@ func Toast() loom.Node {
 			Div(
 				Apply(Attr{"class": "flex items-center gap-2.5 px-5 py-3 bg-surface-3 border border-line-3 text-ink-1 text-sm font-medium rounded-lg"}),
 				Icon("check", 16),
+				Span(Text(msg)),
+			),
+		)
+	})
+}
+
+// showCelebration displays the celebration toast and triggers confetti.
+func showCelebration(name string) {
+	setCelebrationPeer(name)
+	triggerConfetti()
+	js.Global().Call("setTimeout", js.FuncOf(func(this js.Value, args []js.Value) any {
+		setCelebrationPeer("")
+		return nil
+	}), 5000)
+}
+
+// triggerConfetti injects CSS confetti pieces into the DOM.
+func triggerConfetti() {
+	doc := js.Global().Get("document")
+	container := doc.Call("createElement", "div")
+	container.Set("id", "confetti-container")
+	doc.Get("body").Call("appendChild", container)
+
+	colors := []string{"#f87171", "#34d399", "#60a5fa", "#fbbf24", "#a78bfa", "#f472b6", "#2dd4bf"}
+	for i := 0; i < 40; i++ {
+		piece := doc.Call("createElement", "div")
+		piece.Get("classList").Call("add", "confetti-piece")
+		piece.Get("style").Set("left", fmt.Sprintf("%d%%", i*100/40+1))
+		piece.Get("style").Set("backgroundColor", colors[i%len(colors)])
+		dur := 1.5 + float64(i%5)*0.4
+		piece.Get("style").Set("animationDuration", fmt.Sprintf("%.1fs", dur))
+		piece.Get("style").Set("animationDelay", fmt.Sprintf("%.2fs", float64(i%8)*0.1))
+		container.Call("appendChild", piece)
+	}
+
+	// Remove confetti container after animations complete
+	js.Global().Call("setTimeout", js.FuncOf(func(this js.Value, args []js.Value) any {
+		container.Call("remove")
+		return nil
+	}), 5000)
+}
+
+// CelebrationToast renders a celebration notification for first peer connection.
+func CelebrationToast() loom.Node {
+	return Bind(func() loom.Node {
+		name := celebrationPeer()
+		cls := "fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-celebrate"
+		msg := fmt.Sprintf("\U0001f389  %s is connected!", name)
+		if name == "" {
+			cls = "fixed bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none opacity-0"
+			msg = "\u00a0"
+		}
+		return Div(
+			Apply(Attr{"class": cls}),
+			Div(
+				Apply(Attr{"class": "flex items-center gap-2.5 px-5 py-3 bg-green-600/20 border border-green-500/40 text-green-300 text-sm font-medium rounded-lg shadow-lg"}),
 				Span(Text(msg)),
 			),
 		)
