@@ -140,6 +140,28 @@ func Badge(label string, color string) loom.Node {
 	return Span(Apply(Attr{"class": class}), Text(label))
 }
 
+// Tooltip wraps a trigger node with a hover popover listing items.
+func Tooltip(trigger loom.Node, items []string) loom.Node {
+	rows := make([]loom.Node, len(items))
+	for i, item := range items {
+		rows[i] = Div(
+			Apply(Attr{"class": "py-[2px] text-ink-2"}),
+			Text(item),
+		)
+	}
+	return Span(
+		Apply(Attr{"class": "tooltip-trigger relative"}),
+		trigger,
+		Div(
+			Apply(Attr{"class": "tooltip-body absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 z-50 pointer-events-none"}),
+			Div(
+				Apply(Attr{"class": "bg-surface-3 border border-line-3 rounded-md px-2.5 py-1.5 text-[11px] leading-none font-mono whitespace-nowrap"}),
+				Fragment(rows...),
+			),
+		),
+	)
+}
+
 // MonoText renders text in monospace.
 func MonoText(content string) loom.Node {
 	return Span(Apply(Attr{"class": "font-mono text-sm"}), Text(content))

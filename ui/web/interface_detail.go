@@ -558,6 +558,19 @@ func peerActions(ifaceID string, ps peerStatusData) loom.Node {
 	)
 }
 
+// parseCSV splits a comma-separated string into trimmed entries.
+func parseCSV(s string) []string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	for i := range parts {
+		parts[i] = strings.TrimSpace(parts[i])
+	}
+	return parts
+}
+
 // peerCardList renders all peers as card-based rows (replaces the old table+mobile-cards split).
 func peerCardList(ifaceID string, peers []peerStatusData) loom.Node {
 	cards := make([]loom.Node, 0, len(peers))
@@ -599,6 +612,34 @@ func peerCardList(ifaceID string, peers []peerStatusData) loom.Node {
 					return Span()
 				}(),
 				Span(Text(fmt.Sprintf("↓%s  ↑%s", FormatBytes(ps.TransferRx), FormatBytes(ps.TransferTx)))),
+				func() loom.Node {
+					if ips := parseCSV(ps.Peer.AllowedIPs); len(ips) > 0 {
+						n := len(ips)
+						label := fmt.Sprintf("%d Server IPs", n)
+						if n == 1 {
+							label = "1 Server IP"
+						}
+						return Tooltip(Badge(label, ""), ips)
+					}
+					return Span()
+				}(),
+				func() loom.Node {
+					if ips := parseCSV(ps.Peer.ClientAllowedIPs); len(ips) > 0 {
+						n := len(ips)
+						label := fmt.Sprintf("%d Client IPs", n)
+						if n == 1 {
+							label = "1 Client IP"
+						}
+						return Tooltip(Badge(label, ""), ips)
+					}
+					return Span()
+				}(),
+				func() loom.Node {
+					if dns := parseCSV(ps.Peer.DNS); len(dns) > 0 {
+						return Tooltip(Badge("DNS", ""), dns)
+					}
+					return Span()
+				}(),
 			),
 		}
 
