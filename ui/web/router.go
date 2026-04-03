@@ -75,34 +75,45 @@ func resolveRoute() loom.Node {
 
 	switch {
 	case r == "/" || r == "":
+		setPageTitle("Dashboard")
 		return DashboardView()
 
 	case r == "/interfaces":
+		setPageTitle("Interfaces")
 		return InterfacesView()
 
 	case strings.Contains(r, "/peers/") && strings.HasSuffix(r, "/config"):
 		parts := strings.Split(strings.TrimPrefix(r, "/interfaces/"), "/")
 		if len(parts) >= 4 {
+			setPageTitle("Peer Config")
 			return PeerConfigView(parts[0], parts[2])
 		}
+		setPageTitle("")
 		return DashboardView()
 
 	case strings.HasPrefix(r, "/interfaces/") && !strings.Contains(r, "/peers/"):
-		return InterfaceDetailView(routeParam("/interfaces/"))
+		id := routeParam("/interfaces/")
+		setPageTitle(id)
+		return InterfaceDetailView(id)
 
 	case r == "/logs":
+		setPageTitle("Connection Logs")
 		return LogsView("")
 
 	case strings.HasPrefix(r, "/logs/"):
+		setPageTitle("Connection Logs")
 		return LogsView(routeParam("/logs/"))
 
 	case r == "/users":
+		setPageTitle("Users")
 		return UsersView()
 
 	case r == "/settings":
+		setPageTitle("Settings")
 		return SettingsView()
 
 	default:
+		setPageTitle("")
 		return DashboardView()
 	}
 }

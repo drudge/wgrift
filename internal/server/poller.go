@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/drudge/wgrift/internal/config"
@@ -13,16 +14,21 @@ import (
 
 // Poller polls WireGuard interface status and logs connection events.
 type Poller struct {
-	manager  *wg.Manager
-	store    store.Store
-	interval time.Duration
+	manager   *wg.Manager
+	store     store.Store
+	interval  time.Duration
 	retention time.Duration
+
+	mu        sync.Mutex
+	lastState map[string]peerSnapshot
+	notify    chan struct{}
 }
 
 type peerSnapshot struct {
 	Connected  bool
 	TransferRx int64
 	TransferTx int64
+	Endpoint   string
 }
 
 // NewPoller creates a connection status poller.
@@ -39,12 +45,24 @@ func NewPoller(mgr *wg.Manager, s store.Store, cfg config.Config) *Poller {
 		store:     s,
 		interval:  interval,
 		retention: retention,
+		lastState: make(map[string]peerSnapshot),
+		notify:    make(chan struct{}, 1),
+	}
+}
+
+// Kick triggers an immediate poll cycle. Non-blocking.
+func (p *Poller) Kick() {
+	select {
+	case p.notify <- struct{}{}:
+	default:
 	}
 }
 
 // Run starts the polling loop. Blocks until ctx is cancelled.
 func (p *Poller) Run(ctx context.Context) {
-	lastState := make(map[string]peerSnapshot)
+	// Seed initial state so the first real transition is detected.
+	p.poll()
+
 	ticker := time.NewTicker(p.interval)
 	defer ticker.Stop()
 
@@ -56,7 +74,9 @@ func (p *Poller) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			p.poll(lastState)
+			p.poll()
+		case <-p.notify:
+			p.poll()
 		case <-cleanupTicker.C:
 			cutoff := time.Now().UTC().Add(-p.retention)
 			if err := p.store.DeleteOldConnectionLogs(cutoff); err != nil {
@@ -66,7 +86,10 @@ func (p *Poller) Run(ctx context.Context) {
 	}
 }
 
-func (p *Poller) poll(lastState map[string]peerSnapshot) {
+func (p *Poller) poll() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	ifaces, err := p.store.ListInterfaces()
 	if err != nil {
 		log.Printf("poller: list interfaces: %v", err)
@@ -85,12 +108,13 @@ func (p *Poller) poll(lastState map[string]peerSnapshot) {
 
 		for _, ps := range status.Peers {
 			key := ps.Peer.PublicKey
-			prev, exists := lastState[key]
+			prev, exists := p.lastState[key]
 
 			current := peerSnapshot{
 				Connected:  ps.Connected,
 				TransferRx: ps.TransferRx,
 				TransferTx: ps.TransferTx,
+				Endpoint:   ps.Endpoint,
 			}
 
 			// Log state transitions
@@ -104,6 +128,7 @@ func (p *Poller) poll(lastState map[string]peerSnapshot) {
 					PeerID:      ps.Peer.ID,
 					InterfaceID: iface.ID,
 					Event:       event,
+					Endpoint:    current.Endpoint,
 					TransferRx:  current.TransferRx,
 					TransferTx:  current.TransferTx,
 				}
@@ -124,7 +149,7 @@ func (p *Poller) poll(lastState map[string]peerSnapshot) {
 				p.store.UpdatePeer(&peer)
 			}
 
-			lastState[key] = current
+			p.lastState[key] = current
 		}
 	}
 }

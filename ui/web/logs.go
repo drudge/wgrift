@@ -137,7 +137,16 @@ func LogsView(initialIfaceID string) loom.Node {
 							// Peer info — grows to fill
 							Div(
 								Apply(Attr{"class": "flex-1 min-w-0"}),
-								Div(Apply(Attr{"class": "text-sm text-ink-1 font-medium"}), Text(peerLabel)),
+								Div(
+									Apply(Attr{"class": "flex items-center gap-2"}),
+									Span(Apply(Attr{"class": "text-sm text-ink-1 font-medium"}), Text(peerLabel)),
+									func() loom.Node {
+										if log.Endpoint != "" {
+											return Span(Apply(Attr{"class": "font-mono text-[11px] text-ink-4"}), Text(log.Endpoint))
+										}
+										return Span()
+									}(),
+								),
 								Div(Apply(Attr{"class": "text-[11px] text-ink-4 mt-0.5"}), Text(FormatTimestamp(log.RecordedAt))),
 								// Mobile transfer stats
 								Div(

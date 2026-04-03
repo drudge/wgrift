@@ -13,6 +13,15 @@ import (
 	. "github.com/loom-go/web/components"
 )
 
+// setPageTitle updates the browser tab title.
+func setPageTitle(title string) {
+	if title == "" {
+		js.Global().Get("document").Set("title", "wgRift")
+	} else {
+		js.Global().Get("document").Set("title", title+" · wgRift")
+	}
+}
+
 // Card wraps content in an elevated surface.
 func Card(children ...loom.Node) loom.Node {
 	return Div(
