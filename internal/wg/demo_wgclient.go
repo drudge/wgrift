@@ -4,9 +4,11 @@ import (
 	"hash/fnv"
 	"math/rand"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/drudge/wgrift/internal/models"
 	"github.com/drudge/wgrift/internal/store"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -23,6 +25,7 @@ type demoWGClient struct {
 
 type demoPeerState struct {
 	connected     bool
+	persistent    bool // site-to-site peers rarely disconnect
 	lastHandshake time.Time
 	rxBytes       int64
 	txBytes       int64
@@ -60,7 +63,7 @@ func (d *demoWGClient) Device(name string) (*wgtypes.Device, error) {
 			continue
 		}
 
-		state := d.getOrCreateState(p.PublicKey, now)
+		state := d.getOrCreateState(p, now)
 		d.evolveState(state, now)
 
 		wp := wgtypes.Peer{
@@ -82,80 +85,128 @@ func (d *demoWGClient) Device(name string) (*wgtypes.Device, error) {
 
 func (d *demoWGClient) Close() error { return nil }
 
-func (d *demoWGClient) getOrCreateState(pubKey string, now time.Time) *demoPeerState {
-	if state, ok := d.peerStates[pubKey]; ok {
+func (d *demoWGClient) getOrCreateState(peer models.Peer, now time.Time) *demoPeerState {
+	if state, ok := d.peerStates[peer.PublicKey]; ok {
 		return state
 	}
 
-	// Deterministic seed from public key for consistent initial state
+	// Deterministic seed from public key for consistent state across restarts
 	h := fnv.New64a()
-	h.Write([]byte(pubKey))
+	h.Write([]byte(peer.PublicKey))
 	rng := rand.New(rand.NewSource(int64(h.Sum64())))
 
-	// ~70% chance of starting connected
-	connected := rng.Float64() < 0.70
+	// Determine initial connected state from the peer's seeded data.
+	// If the peer has a recent LastHandshake in the DB, start connected.
+	// Otherwise start disconnected. This aligns with the seed data.
+	connected := false
+	if peer.LastHandshake != nil && time.Since(*peer.LastHandshake) < 180*time.Second {
+		connected = true
+	}
+
+	// Site-to-site peers are persistent infrastructure — very stable
+	persistent := peer.Type == models.PeerTypeSite
 
 	var lastHandshake time.Time
 	if connected {
-		lastHandshake = now.Add(-time.Duration(rng.Intn(120)) * time.Second)
+		lastHandshake = now.Add(-time.Duration(rng.Intn(60)) * time.Second)
 	}
 
-	// Generate a plausible public IP endpoint
-	ep := net.UDPAddr{
-		IP:   demoEndpointIP(rng),
-		Port: 1024 + rng.Intn(64000),
+	// Use the peer's seeded endpoint if available, otherwise generate one
+	ep := net.UDPAddr{Port: 1024 + rng.Intn(64000)}
+	if peer.Endpoint != "" {
+		ep.IP = net.ParseIP(peer.Endpoint)
+	}
+	if ep.IP == nil {
+		ep.IP = demoEndpointIP(rng)
 	}
 
-	// Start with some accumulated transfer data
-	rxBytes := int64(rng.Intn(500_000_000)) + 1_000_000 // 1MB - 500MB
-	txBytes := int64(rng.Intn(100_000_000)) + 500_000   // 500KB - 100MB
+	// Start with accumulated transfer data based on peer type
+	var rxBytes, txBytes int64
+	if persistent {
+		// Site-to-site: high baseline (always-on links)
+		rxBytes = int64(rng.Intn(2_000_000_000)) + 500_000_000 // 500MB - 2.5GB
+		txBytes = int64(rng.Intn(500_000_000)) + 100_000_000   // 100MB - 600MB
+	} else {
+		// Client: moderate baseline
+		rxBytes = int64(rng.Intn(500_000_000)) + 1_000_000 // 1MB - 500MB
+		txBytes = int64(rng.Intn(100_000_000)) + 500_000   // 500KB - 100MB
+	}
+
+	// Delay before first potential state flip.
+	// Disconnected peers wait longer so they don't immediately reconnect.
+	var flipDelay int
+	if persistent && connected {
+		flipDelay = 300 + rng.Intn(600) // 5-15 min (stable infrastructure)
+	} else if persistent && !connected {
+		flipDelay = 60 + rng.Intn(180) // 1-4 min (will reconnect soon)
+	} else if connected {
+		flipDelay = 120 + rng.Intn(300) // 2-7 min (stay online a while)
+	} else {
+		flipDelay = 300 + rng.Intn(600) // 5-15 min (stay offline a while)
+	}
 
 	state := &demoPeerState{
 		connected:     connected,
+		persistent:    persistent,
 		lastHandshake: lastHandshake,
 		rxBytes:       rxBytes,
 		txBytes:       txBytes,
 		endpoint:      ep,
-		nextFlipAfter: now.Add(time.Duration(30+rng.Intn(270)) * time.Second),
+		nextFlipAfter: now.Add(time.Duration(flipDelay) * time.Second),
 	}
 
-	d.peerStates[pubKey] = state
+	d.peerStates[peer.PublicKey] = state
 	return state
 }
 
 func (d *demoWGClient) evolveState(state *demoPeerState, now time.Time) {
 	rng := rand.New(rand.NewSource(now.UnixNano()))
 
-	// Check for state transition
 	if now.After(state.nextFlipAfter) {
-		if state.connected {
-			// ~30% chance of disconnecting when the flip timer fires
-			if rng.Float64() < 0.30 {
-				state.connected = false
+		if state.persistent {
+			// Site-to-site: very rarely disconnects (~5%), reconnects quickly (~90%)
+			if state.connected {
+				if rng.Float64() < 0.05 {
+					state.connected = false
+				}
+			} else {
+				if rng.Float64() < 0.90 {
+					state.connected = true
+				}
 			}
+			// Longer intervals between checks for persistent peers
+			state.nextFlipAfter = now.Add(time.Duration(120+rng.Intn(480)) * time.Second) // 2-10 min
 		} else {
-			// ~60% chance of reconnecting when the flip timer fires
-			if rng.Float64() < 0.60 {
-				state.connected = true
+			// Client peers: moderate churn
+			if state.connected {
+				if rng.Float64() < 0.25 {
+					state.connected = false
+				}
+			} else {
+				if rng.Float64() < 0.40 {
+					state.connected = true
+				}
 			}
+			state.nextFlipAfter = now.Add(time.Duration(30+rng.Intn(270)) * time.Second) // 30s-5min
 		}
-		// Schedule next potential flip: 30s to 5min
-		state.nextFlipAfter = now.Add(time.Duration(30+rng.Intn(270)) * time.Second)
 	}
 
 	if state.connected {
-		// Increment transfer data
-		state.rxBytes += int64(50_000 + rng.Intn(2_000_000)) // 50KB - 2MB
-		state.txBytes += int64(10_000 + rng.Intn(500_000))   // 10KB - 500KB
-		// Recent handshake (within 180s threshold)
+		if state.persistent {
+			// Site-to-site links: steady, higher throughput
+			state.rxBytes += int64(100_000 + rng.Intn(5_000_000)) // 100KB - 5MB
+			state.txBytes += int64(50_000 + rng.Intn(2_000_000))  // 50KB - 2MB
+		} else {
+			// Client VPN: bursty, lower throughput
+			state.rxBytes += int64(50_000 + rng.Intn(2_000_000)) // 50KB - 2MB
+			state.txBytes += int64(10_000 + rng.Intn(500_000))   // 10KB - 500KB
+		}
 		state.lastHandshake = now.Add(-time.Duration(rng.Intn(120)) * time.Second)
 	}
-	// Disconnected peers keep their stale lastHandshake (will exceed 180s threshold naturally)
 }
 
 // demoEndpointIP generates a plausible-looking public IP address.
 func demoEndpointIP(rng *rand.Rand) net.IP {
-	// Use various public IP ranges that look realistic
 	prefixes := []struct {
 		a, b byte
 	}{
@@ -173,4 +224,17 @@ func demoEndpointIP(rng *rand.Rand) net.IP {
 
 	prefix := prefixes[rng.Intn(len(prefixes))]
 	return net.IPv4(prefix.a, byte(rng.Intn(256)), byte(1+rng.Intn(254)), byte(1+rng.Intn(254)))
+}
+
+// isPersistentPeer checks if a peer name suggests a persistent site-to-site connection.
+// Used as a fallback when peer type isn't available.
+func isPersistentPeer(name string) bool {
+	persistent := []string{"warehouse", "office", "datacenter", "server", "router", "gateway"}
+	lower := strings.ToLower(name)
+	for _, p := range persistent {
+		if strings.Contains(lower, p) {
+			return true
+		}
+	}
+	return false
 }

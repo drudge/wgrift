@@ -72,11 +72,20 @@ type demoPeerDef struct {
 	clientAllowedIPs string
 	enabled          bool
 	psk              bool
-	// for connection history seeding
-	connected bool
-	endpoint  string
+	// simulation hints
+	connected bool   // initial state the mock client should match
+	endpoint  string // static endpoint for history
 }
 
+// seedVandelayVPN creates the client-access VPN with realistic usage:
+//
+//   - George is at the office on his MacBook (connected). His iPhone is in
+//     his pocket — not on VPN because he's on the office Wi-Fi.
+//   - Jerry is working from home on his MacBook (connected).
+//   - Elaine is out at a meeting — her MacBook disconnected when she closed
+//     the lid at the coffee shop.
+//   - Kramer just popped online from his apartment (connected).
+//   - Newman's account is disabled (terminated).
 func seedVandelayVPN(s store.Store, enc *crypto.Encryptor) error {
 	privKey, _, err := crypto.GenerateKeyPair()
 	if err != nil {
@@ -103,13 +112,17 @@ func seedVandelayVPN(s store.Store, enc *crypto.Encryptor) error {
 	}
 
 	peers := []demoPeerDef{
+		// George — at the office, MacBook on VPN, iPhone not needed
 		{"george-macbook", "10.200.0.2/32", "0.0.0.0/0, ::/0", true, true, true, "73.42.118.205"},
-		{"george-iphone", "10.200.0.3/32", "0.0.0.0/0, ::/0", true, true, true, "73.42.118.205"},
+		{"george-iphone", "10.200.0.3/32", "0.0.0.0/0, ::/0", true, true, false, "73.42.118.205"},
+		// Jerry — working from home, MacBook connected
 		{"jerry-macbook", "10.200.0.4/32", "0.0.0.0/0, ::/0", true, true, true, "98.207.45.12"},
-		{"jerry-ipad", "10.200.0.5/32", "0.0.0.0/0, ::/0", true, false, false, "98.207.45.12"},
-		{"elaine-macbook", "10.200.0.6/32", "0.0.0.0/0, ::/0", true, true, true, "174.63.221.88"},
-		{"kramer-macbook", "10.200.0.7/32", "0.0.0.0/0, ::/0", true, false, true, "24.185.93.140"},
-		{"newman-desktop", "10.200.0.8/32", "0.0.0.0/0, ::/0", false, false, false, ""},
+		// Elaine — out at a meeting, laptop closed
+		{"elaine-macbook", "10.200.0.5/32", "0.0.0.0/0, ::/0", true, true, false, "174.63.221.88"},
+		// Kramer — just connected from home
+		{"kramer-macbook", "10.200.0.6/32", "0.0.0.0/0, ::/0", true, false, true, "24.185.93.140"},
+		// Newman — terminated, account disabled
+		{"newman-desktop", "10.200.0.7/32", "0.0.0.0/0, ::/0", false, false, false, ""},
 	}
 
 	for _, p := range peers {
@@ -127,6 +140,12 @@ func seedVandelayVPN(s store.Store, enc *crypto.Encryptor) error {
 	return nil
 }
 
+// seedVandelaySites creates site-to-site tunnels for Vandelay locations.
+// These are persistent connections — dedicated hardware that stays online.
+//
+//   - warehouse-nj and office-manhattan are always connected (dedicated hardware).
+//   - george-home is his home office router — connected and stable.
+//   - kramer-home drops occasionally (Kramer's router is unreliable).
 func seedVandelaySites(s store.Store, enc *crypto.Encryptor) error {
 	privKey, _, err := crypto.GenerateKeyPair()
 	if err != nil {
@@ -153,8 +172,10 @@ func seedVandelaySites(s store.Store, enc *crypto.Encryptor) error {
 	}
 
 	peers := []demoPeerDef{
+		// Permanent sites — always connected
 		{"warehouse-nj", "10.100.0.2/32", "10.100.0.2/32, 192.168.10.0/24", true, true, true, "203.45.167.22"},
 		{"office-manhattan", "10.100.0.3/32", "10.100.0.3/32, 192.168.20.0/24", true, true, true, "68.132.91.44"},
+		// Home offices
 		{"george-home", "10.100.0.4/32", "10.100.0.4/32, 192.168.30.0/24", true, true, true, "73.42.118.205"},
 		{"kramer-home", "10.100.0.5/32", "10.100.0.5/32, 192.168.40.0/24", true, true, false, "24.185.93.140"},
 	}
@@ -210,15 +231,22 @@ func createDemoPeer(s store.Store, enc *crypto.Encryptor, ifaceID string, peerTy
 	if err := s.CreatePeer(peer); err != nil {
 		return "", err
 	}
+
+	// Set a recent LastHandshake for peers that should appear connected,
+	// so the demo WGClient picks up the correct initial state.
+	if def.connected {
+		now := time.Now()
+		peer.LastHandshake = &now
+		_ = s.UpdatePeer(peer)
+	}
+
 	return peer.ID, nil
 }
 
 // seedPeerHistory creates realistic connection log entries going back ~24 hours.
-// Peers that are currently "connected" end with a connect event; "disconnected"
-// peers end with a disconnect event. This matches what the simulation engine
-// will show for their current state.
+// The final event matches the peer's current connected state so history aligns
+// with what the simulation engine shows live.
 func seedPeerHistory(s store.Store, ifaceID, peerID string, def demoPeerDef) error {
-	// Deterministic seed per peer for consistent history
 	h := fnv.New64a()
 	h.Write([]byte(peerID))
 	rng := rand.New(rand.NewSource(int64(h.Sum64())))
@@ -226,7 +254,6 @@ func seedPeerHistory(s store.Store, ifaceID, peerID string, def demoPeerDef) err
 	now := time.Now().UTC()
 	t := now.Add(-24 * time.Hour)
 
-	// Start with a "connected" event
 	connected := true
 	var rxTotal, txTotal int64
 
@@ -254,7 +281,6 @@ func seedPeerHistory(s store.Store, ifaceID, peerID string, def demoPeerDef) err
 			return err
 		}
 
-		// Toggle state and advance time
 		connected = !connected
 
 		if connected {
@@ -266,8 +292,7 @@ func seedPeerHistory(s store.Store, ifaceID, peerID string, def demoPeerDef) err
 		}
 	}
 
-	// Ensure the final state matches what the simulation will show.
-	// If the last logged state doesn't match, add one more entry.
+	// Ensure the final logged state matches the simulation's initial state
 	if connected != def.connected {
 		event := "connected"
 		if !def.connected {

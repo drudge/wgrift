@@ -18,6 +18,7 @@ var (
 	preloadAuthed           bool
 	preloadOIDCProviders    []oidcProviderInfo
 	preloadLocalAuthEnabled bool
+	preloadDemoMode         bool
 )
 
 // Loom reactive signals — set by initState, populated from preload values.
@@ -75,6 +76,7 @@ func checkSessionPreload() {
 	if err := unmarshalData(resp.Data, &opts); err == nil && opts.AuthRequired {
 		preloadOIDCProviders = opts.OIDCProviders
 		preloadLocalAuthEnabled = opts.LocalAuthEnabled
+		preloadDemoMode = opts.Demo
 		return
 	}
 
