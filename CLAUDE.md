@@ -24,7 +24,7 @@ Air config: `.air.toml` — used by `mage dev` for live reload (requires: `go in
 GoReleaser config: `.goreleaser.yaml` — before hooks build WASM and copy `wasm_exec.js` automatically.
 
 Module: `github.com/drudge/wgrift`
-Go version: 1.25.5
+Go version: 1.26.1
 
 ## Architecture
 

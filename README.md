@@ -4,15 +4,13 @@ A self-hosted WireGuard VPN management platform. Single binary with embedded web
 
 ## Screenshots
 
-<!-- Add screenshots to docs/screenshots/ and uncomment:
-| Interface Detail | Add Peer |
+| Dashboard | Interface Detail |
 |:---:|:---:|
-| ![Interface Detail](docs/screenshots/interface-detail.png) | ![Add Peer](docs/screenshots/add-peer.png) |
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Interface Detail](docs/screenshots/interface-detail.png) |
 
-| Peer Config & QR | Mobile |
+| Peer Config & QR | Connection Logs |
 |:---:|:---:|
-| ![Peer Config](docs/screenshots/peer-config.png) | ![Mobile](docs/screenshots/mobile.png) |
--->
+| ![Peer Config](docs/screenshots/peer-config.png) | ![Connection Logs](docs/screenshots/logs.png) |
 
 ## Features
 
@@ -49,7 +47,7 @@ Full REST API at `/api/v1/` — interface CRUD, peer CRUD, start/stop/restart, c
 
 ### Build
 
-Requires Go 1.25+, [Mage](https://magefile.org), and optionally [Air](https://github.com/air-verse/air) for live reload.
+Requires Go 1.26+, [Mage](https://magefile.org), and optionally [Air](https://github.com/air-verse/air) for live reload.
 
 ```bash
 go install github.com/magefile/mage@latest          # Build tool
