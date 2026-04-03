@@ -86,7 +86,7 @@ bash deploy/ct/wgrift.sh
 
 ### First Run
 
-1. Navigate to `https://your-host:8443`
+1. Navigate to `http://your-host:8080`
 2. Create the initial admin account on the setup screen
 3. Create or adopt a WireGuard interface
 4. Add peers and distribute configs
@@ -97,7 +97,7 @@ Default config at `/etc/wgrift/config.yaml`:
 
 ```yaml
 server:
-  listen: "0.0.0.0:8443"
+  listen: "0.0.0.0:8080"
   external_url: ""              # Public IP/hostname for peer configs
   tls:
     mode: none                  # "none", "acme", or "manual"

@@ -11,17 +11,12 @@ apt-get update -qq
 apt-get install -y -qq wireguard-tools
 
 # Create directories
-mkdir -p /opt/wgrift/web
 mkdir -p /etc/wgrift
 mkdir -p /var/lib/wgrift
 
-# Copy files
-cp wgrift /opt/wgrift/wgrift
-chmod +x /opt/wgrift/wgrift
-
-cp wgrift.wasm /opt/wgrift/web/
-cp index.html /opt/wgrift/web/
-cp wasm_exec.js /opt/wgrift/web/
+# Install binary
+cp wgrift /usr/local/bin/wgrift
+chmod +x /usr/local/bin/wgrift
 
 # Generate master key if not exists
 if [ ! -f /etc/wgrift/master.key ]; then
@@ -48,7 +43,7 @@ echo ""
 echo "Next steps:"
 echo "  1. Edit /etc/wgrift/config.yaml (set external_url)"
 echo "  2. systemctl start wgrift"
-echo "  3. Open http://<lxc-ip>:8443 to set up admin account"
+echo "  3. Open http://<lxc-ip>:8080 to set up admin account"
 echo ""
 echo "Proxmox host requirement (run on the host, not in LXC):"
 echo "  modprobe wireguard && echo wireguard >> /etc/modules"
