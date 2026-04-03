@@ -14,7 +14,7 @@ func SetupView() loom.Node {
 	username, setUsername := Signal("")
 	password, setPassword := Signal("")
 	confirm, setConfirm := Signal("")
-	errMsg, setErrMsg := Signal("")
+	errMsg, setErrMsg := Signal(ErrorInfo{})
 	loading, setLoading := Signal(false)
 
 	FocusInput(`input[placeholder="admin"]`)
@@ -24,14 +24,14 @@ func SetupView() loom.Node {
 			return
 		}
 		if password() != confirm() {
-			setErrMsg("Passwords do not match")
+			setErrMsg(ErrorInfo{Message: "Passwords do not match"})
 			return
 		}
 		if len(password()) < 16 {
-			setErrMsg("Password must be at least 16 characters")
+			setErrMsg(ErrorInfo{Message: "Password must be at least 16 characters"})
 			return
 		}
-		setErrMsg("")
+		setErrMsg(ErrorInfo{})
 		setLoading(true)
 
 		go func() {
@@ -42,12 +42,12 @@ func SetupView() loom.Node {
 			}, &resp)
 
 			if err != nil {
-				setErrMsg("Setup failed. Check password requirements.")
+				setErrMsg(ErrorInfo{Message: "Setup failed. Check password requirements."})
 				setLoading(false)
 				return
 			}
 			if resp.Error != "" {
-				setErrMsg(resp.Error)
+				setErrMsg(ErrorInfo{Message: resp.Error})
 				setLoading(false)
 				return
 			}

@@ -21,24 +21,24 @@ var (
 func SettingsView() loom.Node {
 	settings, setSettings := Signal[*settingsData](nil)
 	loading, setLoading := Signal(true)
-	errMsg, setErrMsg := Signal("")
+	errMsg, setErrMsg := Signal(ErrorInfo{})
 
 	loadSettings := func() {
 		go func() {
 			var resp apiResponse
 			if err := apiFetch("GET", "/api/v1/settings", nil, &resp); err != nil {
-				setErrMsg("Failed to load settings")
+				setErrMsg(ErrorInfo{Message: "Failed to load settings"})
 				setLoading(false)
 				return
 			}
 			if resp.Error != "" {
-				setErrMsg(resp.Error)
+				setErrMsg(ErrorInfo{Message: resp.Error})
 				setLoading(false)
 				return
 			}
 			var data settingsData
 			if err := json.Unmarshal(resp.Data, &data); err != nil {
-				setErrMsg("Failed to parse settings")
+				setErrMsg(ErrorInfo{Message: "Failed to parse settings"})
 				setLoading(false)
 				return
 			}
@@ -304,18 +304,18 @@ func oidcProviderForm(editID string, existing *oidcProviderData) loom.Node {
 	adminValue, setAdminValue := Signal(initAdminValue)
 	defaultRole, setDefaultRole := Signal(initDefaultRole)
 	enabled, setEnabled := Signal(initEnabled)
-	errMsg, setErrMsg := Signal("")
+	errMsg, setErrMsg := Signal(ErrorInfo{})
 
 	FocusInput(`input[placeholder="Pocket ID"]`)
 
 	doSave := func() {
-		setErrMsg("")
+		setErrMsg(ErrorInfo{})
 		if name() == "" || issuer() == "" || clientID() == "" {
-			setErrMsg("Name, Issuer URL, and Client ID are required")
+			setErrMsg(ErrorInfo{Message: "Name, Issuer URL, and Client ID are required"})
 			return
 		}
 		if !isEdit && clientSecret() == "" {
-			setErrMsg("Client Secret is required")
+			setErrMsg(ErrorInfo{Message: "Client Secret is required"})
 			return
 		}
 
@@ -341,11 +341,11 @@ func oidcProviderForm(editID string, existing *oidcProviderData) loom.Node {
 				err = apiFetch("POST", "/api/v1/settings/oidc", body, &resp)
 			}
 			if err != nil {
-				setErrMsg(err.Error())
+				setErrMsg(apiErrorInfo(err))
 				return
 			}
 			if resp.Error != "" {
-				setErrMsg(resp.Error)
+				setErrMsg(ErrorInfo{Message: resp.Error})
 				return
 			}
 			settingsShowOIDCForm = false

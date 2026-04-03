@@ -195,22 +195,22 @@ func createInterfaceForm(existing []interfaceData, onCreated func()) loom.Node {
 	address, setAddress := Signal(defaultAddr)
 	dns, setDNS := Signal("")
 	endpoint, setEndpoint := Signal("")
-	errMsg, setErrMsg := Signal("")
+	errMsg, setErrMsg := Signal(ErrorInfo{})
 	FocusInput(`input[placeholder="wg0"]`)
 
 	doCreate := func() {
-		setErrMsg("")
+		setErrMsg(ErrorInfo{})
 		if id() == "" {
-			setErrMsg("Interface ID is required")
+			setErrMsg(ErrorInfo{Message: "Interface ID is required"})
 			return
 		}
 		if address() == "" {
-			setErrMsg("Address is required")
+			setErrMsg(ErrorInfo{Message: "Address is required"})
 			return
 		}
 		portNum, err := strconv.Atoi(port())
 		if err != nil || portNum < 1 || portNum > 65535 {
-			setErrMsg("Port must be a number between 1 and 65535")
+			setErrMsg(ErrorInfo{Message: "Port must be a number between 1 and 65535"})
 			return
 		}
 		go func() {
@@ -224,11 +224,11 @@ func createInterfaceForm(existing []interfaceData, onCreated func()) loom.Node {
 				"endpoint":    endpoint(),
 			}, &resp)
 			if err != nil {
-				setErrMsg(err.Error())
+				setErrMsg(apiErrorInfo(err))
 				return
 			}
 			if resp.Error != "" {
-				setErrMsg(resp.Error)
+				setErrMsg(ErrorInfo{Message: resp.Error})
 				return
 			}
 			onCreated()
@@ -264,17 +264,17 @@ func createInterfaceForm(existing []interfaceData, onCreated func()) loom.Node {
 func importInterfaceForm(onImported func()) loom.Node {
 	id, setID := Signal("")
 	config, setConfig := Signal("")
-	errMsg, setErrMsg := Signal("")
+	errMsg, setErrMsg := Signal(ErrorInfo{})
 	FocusInput(`input[placeholder="wg0"]`)
 
 	doImport := func() {
-		setErrMsg("")
+		setErrMsg(ErrorInfo{})
 		if id() == "" {
-			setErrMsg("Interface ID is required")
+			setErrMsg(ErrorInfo{Message: "Interface ID is required"})
 			return
 		}
 		if config() == "" {
-			setErrMsg("Paste your WireGuard config")
+			setErrMsg(ErrorInfo{Message: "Paste your WireGuard config"})
 			return
 		}
 		go func() {
@@ -285,11 +285,11 @@ func importInterfaceForm(onImported func()) loom.Node {
 				"config": config(),
 			}, &resp)
 			if err != nil {
-				setErrMsg(err.Error())
+				setErrMsg(apiErrorInfo(err))
 				return
 			}
 			if resp.Error != "" {
-				setErrMsg(resp.Error)
+				setErrMsg(ErrorInfo{Message: resp.Error})
 				return
 			}
 			onImported()
