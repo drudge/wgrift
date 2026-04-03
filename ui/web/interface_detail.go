@@ -218,7 +218,7 @@ func interfaceDetailContent(ifaceID string, s *interfaceStatusData, status Acces
 			),
 			func() loom.Node {
 				if detailEditInterface {
-					return interfaceEditForm(ifaceID, s.Interface)
+					return interfaceEditForm(ifaceID, s.Interface, s.PublicKey)
 				}
 				return Div(
 					Apply(Attr{"class": "grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4 text-sm"}),
@@ -230,7 +230,7 @@ func interfaceDetailContent(ifaceID string, s *interfaceStatusData, status Acces
 						}
 						return "(auto-detect)"
 					}()),
-					infoItem("Public Key", truncateKey(s.PublicKey)),
+					copyableInfoItem("Public Key", s.PublicKey),
 					infoItem("Available IPs", formatAvailableIPs(s.Interface.Address, len(s.Peers))),
 				)
 			}(),
@@ -278,7 +278,7 @@ func interfaceDetailContent(ifaceID string, s *interfaceStatusData, status Acces
 	)
 }
 
-func interfaceEditForm(ifaceID string, iface interfaceData) loom.Node {
+func interfaceEditForm(ifaceID string, iface interfaceData, publicKey string) loom.Node {
 	address, setAddress := Signal(iface.Address)
 	port, setPort := Signal(strconv.Itoa(iface.ListenPort))
 	dns, setDNS := Signal(iface.DNS)
@@ -330,6 +330,7 @@ func interfaceEditForm(ifaceID string, iface interfaceData) loom.Node {
 			FormField("Public Endpoint", "text", "vpn.example.com", endpoint, func(v string) { setEndpoint(v) }),
 			FormField("DNS", "text", "1.1.1.1", dns, func(v string) { setDNS(v) }),
 			FormField("MTU", "number", "1420", mtu, func(v string) { setMTU(v) }),
+			readOnlyCopyField("Public Key", publicKey),
 		),
 		Div(
 			Apply(Attr{"class": "flex items-center gap-2 mt-2"}),
@@ -375,6 +376,60 @@ func truncateKey(key string) string {
 		return key[:8] + "..." + key[len(key)-4:]
 	}
 	return key
+}
+
+// copyableKey renders a clickable public key that copies to clipboard with a toast.
+// Shows truncated on mobile, full key on desktop.
+func copyableKey(key string) loom.Node {
+	return Div(
+		Apply(Attr{
+			"class": "font-mono text-[11px] text-ink-4 truncate cursor-pointer hover:text-ink-2 transition-colors",
+			"title": "Click to copy",
+		}),
+		Apply(On{"click": func() {
+			js.Global().Get("navigator").Get("clipboard").Call("writeText", key)
+			showToast("Public key copied")
+		}}),
+		Span(Apply(Attr{"class": "sm:hidden"}), Text(truncateKey(key))),
+		Span(Apply(Attr{"class": "hidden sm:inline"}), Text(key)),
+	)
+}
+
+// copyableInfoItem renders a label+value info item where the value is clickable to copy.
+func copyableInfoItem(label, value string) loom.Node {
+	return Div(
+		Div(Apply(Attr{"class": "text-[11px] text-ink-3 uppercase tracking-widest font-medium mb-1.5"}), Text(label)),
+		Div(
+			Apply(Attr{
+				"class": "font-mono text-ink-1 text-sm cursor-pointer hover:text-wg-500 transition-colors truncate",
+				"title": "Click to copy",
+			}),
+			Apply(On{"click": func() {
+				js.Global().Get("navigator").Get("clipboard").Call("writeText", value)
+				showToast("Public key copied")
+			}}),
+			Text(truncateKey(value)),
+		),
+	)
+}
+
+// readOnlyCopyField renders a read-only form field with click-to-copy.
+func readOnlyCopyField(label, value string) loom.Node {
+	return Div(
+		Apply(Attr{"class": "mb-4"}),
+		Elem("label", Apply(Attr{"class": "block text-[11px] font-semibold text-ink-3 mb-2 uppercase tracking-[0.08em]"}), Text(label)),
+		Div(
+			Apply(Attr{
+				"class": "w-full px-3.5 py-2.5 bg-surface-0/50 border border-line-1 rounded-md text-ink-3 text-sm font-mono truncate cursor-pointer hover:text-ink-1 hover:border-line-2 transition-colors",
+				"title": "Click to copy",
+			}),
+			Apply(On{"click": func() {
+				js.Global().Get("navigator").Get("clipboard").Call("writeText", value)
+				showToast("Public key copied")
+			}}),
+			Text(value),
+		),
+	)
 }
 
 func peerSetKeyForm(ifaceID, peerID, peerName string) loom.Node {
@@ -525,7 +580,7 @@ func peerCardList(ifaceID string, peers []peerStatusData) loom.Node {
 							Span(Apply(Attr{"class": "text-sm font-semibold text-ink-1 truncate"}), Text(ps.Peer.Name)),
 							PeerTypeBadge(ps.Peer.Type),
 						),
-						Div(Apply(Attr{"class": "font-mono text-[11px] text-ink-4 truncate"}), Text(truncateKey(ps.Peer.PublicKey))),
+						copyableKey(ps.Peer.PublicKey),
 					),
 				),
 				peerActions(ifaceID, ps),

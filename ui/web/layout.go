@@ -3,6 +3,9 @@
 package main
 
 import (
+	"fmt"
+	"syscall/js"
+
 	"github.com/loom-go/loom"
 	. "github.com/loom-go/loom/components"
 	. "github.com/loom-go/web/components"
@@ -30,6 +33,20 @@ func Layout(content loom.Node) loom.Node {
 				Div(
 					Apply(Attr{"class": "px-5 py-6 md:px-10 md:py-8 lg:px-12 max-w-6xl"}),
 					content,
+				),
+				Elem("footer",
+					Apply(Attr{"class": "py-8 text-center text-[11px] text-ink-4/50"}),
+					Text(fmt.Sprintf("© %d ", js.Global().Get("Date").New().Call("getFullYear").Int())),
+					Elem("a",
+						Apply(Attr{
+							"href":   "https://www.penree.com",
+							"target": "_blank",
+							"rel":    "noopener noreferrer",
+							"class":  "text-ink-4/70 hover:text-wg-500 transition-colors",
+						}),
+						Text("Nicholas Penree"),
+					),
+					Text(" · MIT License"),
 				),
 			),
 		),
