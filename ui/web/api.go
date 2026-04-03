@@ -199,6 +199,7 @@ type authOptions struct {
 	AuthRequired     bool               `json:"auth_required"`
 	OIDCProviders    []oidcProviderInfo `json:"oidc_providers"`
 	LocalAuthEnabled bool               `json:"local_auth_enabled"`
+	Demo             bool               `json:"demo"`
 }
 
 type settingsData struct {

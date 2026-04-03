@@ -231,6 +231,15 @@ func createDemoPeer(s store.Store, enc *crypto.Encryptor, ifaceID string, peerTy
 	if err := s.CreatePeer(peer); err != nil {
 		return "", err
 	}
+
+	// Set a recent LastHandshake for peers that should appear connected,
+	// so the demo WGClient picks up the correct initial state.
+	if def.connected {
+		now := time.Now()
+		peer.LastHandshake = &now
+		_ = s.UpdatePeer(peer)
+	}
+
 	return peer.ID, nil
 }
 

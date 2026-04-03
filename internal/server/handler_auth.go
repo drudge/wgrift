@@ -30,6 +30,7 @@ type authOptionsResponse struct {
 	AuthRequired     bool               `json:"auth_required"`
 	OIDCProviders    []oidcProviderInfo `json:"oidc_providers"`
 	LocalAuthEnabled bool               `json:"local_auth_enabled"`
+	Demo             bool               `json:"demo,omitempty"`
 }
 
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -180,5 +181,6 @@ func (s *Server) writeAuthOptions(w http.ResponseWriter) {
 		AuthRequired:     true,
 		OIDCProviders:    providers,
 		LocalAuthEnabled: s.cfg.Auth.Local.Enabled,
+		Demo:             s.cfg.Demo,
 	})
 }

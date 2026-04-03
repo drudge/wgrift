@@ -69,6 +69,18 @@ func LoginView() loom.Node {
 	// Build the form content
 	var formContent []loom.Node
 
+	// Demo mode hint
+	if preloadDemoMode {
+		formContent = append(formContent, Div(
+			Apply(Attr{"class": "mb-4 px-4 py-3 rounded-lg border border-blue-500/30 bg-blue-500/10 text-sm text-blue-300"}),
+			Span(Apply(Attr{"class": "font-semibold"}), Text("Demo Mode")),
+			Span(Text(" — sign in with ")),
+			Span(Apply(Attr{"class": "font-mono font-semibold"}), Text("admin")),
+			Span(Text(" / ")),
+			Span(Apply(Attr{"class": "font-mono font-semibold"}), Text("admin")),
+		))
+	}
+
 	// OIDC provider buttons
 	if hasOIDC {
 		var oidcButtons []loom.Node

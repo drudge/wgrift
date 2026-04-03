@@ -132,12 +132,17 @@ func (d *demoWGClient) getOrCreateState(peer models.Peer, now time.Time) *demoPe
 		txBytes = int64(rng.Intn(100_000_000)) + 500_000   // 500KB - 100MB
 	}
 
-	// First state flip further out for site-to-site
+	// Delay before first potential state flip.
+	// Disconnected peers wait longer so they don't immediately reconnect.
 	var flipDelay int
-	if persistent {
-		flipDelay = 300 + rng.Intn(600) // 5-15 min before first potential flip
+	if persistent && connected {
+		flipDelay = 300 + rng.Intn(600) // 5-15 min (stable infrastructure)
+	} else if persistent && !connected {
+		flipDelay = 60 + rng.Intn(180) // 1-4 min (will reconnect soon)
+	} else if connected {
+		flipDelay = 120 + rng.Intn(300) // 2-7 min (stay online a while)
 	} else {
-		flipDelay = 30 + rng.Intn(270) // 30s-5min
+		flipDelay = 300 + rng.Intn(600) // 5-15 min (stay offline a while)
 	}
 
 	state := &demoPeerState{
