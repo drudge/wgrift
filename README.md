@@ -49,14 +49,20 @@ Full REST API at `/api/v1/` — interface CRUD, peer CRUD, start/stop/restart, c
 
 ### Build
 
-Requires Go 1.25+.
+Requires Go 1.25+, [Mage](https://magefile.org), and optionally [Air](https://github.com/air-verse/air) for live reload.
+
+```bash
+go install github.com/magefile/mage@latest          # Build tool
+go install github.com/air-verse/air@latest           # Live reload (optional)
+```
 
 ```bash
 # Development
-make serve          # Build WASM + binary, start server on :8443
+mage dev            # Live reload — watches files, rebuilds WASM+binary, restarts server
+mage serve          # Build WASM + binary, start server (no live reload)
 
 # Production build (linux/amd64)
-make dist           # Output: dist/wgrift (single binary with embedded UI)
+mage dist           # Output: dist/wgrift (single binary with embedded UI)
 ```
 
 ### Install
