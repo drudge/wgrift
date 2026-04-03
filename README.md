@@ -20,9 +20,10 @@ A self-hosted WireGuard VPN management platform. Single binary with embedded web
 - **Peer Management** — Add/edit/enable/disable peers with auto-generated keys and next available IP
 - **Peer Config & QR** — View, copy, or download client configs; scan QR codes for mobile setup
 - **Connection Logs** — Real-time connection/disconnection tracking per interface
+- **SSO / OIDC** — OpenID Connect authentication with multi-provider support, JIT user provisioning, and role mapping
 - **User Management** — Multi-user with admin/viewer roles
 - **Mobile Responsive** — Slide-out nav, responsive layouts for all views
-- **Session Auth** — Login with CSRF protection, idle timeout, and max session age
+- **Session Auth** — Local login and OIDC with CSRF protection, idle timeout, and max session age
 
 ### CLI
 - `wgrift interface create` — Create a new WireGuard interface
@@ -113,6 +114,14 @@ auth:
   local:
     enabled: true
     min_password_length: 16
+  oidc:
+    - name: "Authentik"
+      issuer: "https://auth.example.com/application/o/wgrift/"
+      client_id: "wgrift"
+      client_secret_file: /etc/wgrift/oidc-secret
+      scopes: ["openid", "profile", "email"]
+      admin_claim: "groups"
+      admin_value: "wgrift-admins"
 
 logging:
   connection_poll_interval: 30s
@@ -120,14 +129,16 @@ logging:
   retention_days: 90
 ```
 
-The master key encrypts peer private keys at rest. It's generated automatically by the installer or can be set via the `WGRIFT_MASTER_KEY` environment variable.
+The master key encrypts peer private keys and OIDC client secrets at rest. It's generated automatically by the installer or can be set via the `WGRIFT_MASTER_KEY` environment variable.
+
+OIDC providers can also be configured through the web UI under **Settings → OIDC Providers**. Users are provisioned automatically on first login, and the `admin_claim`/`admin_value` fields control which claim value grants the admin role.
 
 ## Architecture
 
 ```
 cmd/wgrift/          Cobra CLI — all commands
 internal/
-  auth/              Session auth, bcrypt, CSRF
+  auth/              Session auth, bcrypt, CSRF, OIDC
   config/            YAML config with env var overrides
   confgen/           WireGuard .conf generation & parsing
   models/            Interface, Peer, User, Session, ConnectionLog
