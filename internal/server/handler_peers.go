@@ -8,6 +8,7 @@ import (
 )
 
 type addPeerRequest struct {
+	Type                string `json:"type"`
 	Name                string `json:"name"`
 	Address             string `json:"address"`
 	AllowedIPs          string `json:"allowed_ips"`
@@ -42,8 +43,14 @@ func (s *Server) handleAddPeer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	peerType := models.PeerType(req.Type)
+	if peerType != models.PeerTypeClient && peerType != models.PeerTypeSite {
+		peerType = models.PeerTypeClient
+	}
+
 	peer := &models.Peer{
 		InterfaceID:         ifaceID,
+		Type:                peerType,
 		Name:                req.Name,
 		Address:             req.Address,
 		AllowedIPs:          req.AllowedIPs,
@@ -62,6 +69,7 @@ func (s *Server) handleAddPeer(w http.ResponseWriter, r *http.Request) {
 }
 
 type updatePeerRequest struct {
+	Type                string  `json:"type"`
 	Name                string  `json:"name"`
 	Address             string  `json:"address"`
 	AllowedIPs          string  `json:"allowed_ips"`
@@ -90,6 +98,12 @@ func (s *Server) handleUpdatePeer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Type != "" {
+		peerType := models.PeerType(req.Type)
+		if peerType == models.PeerTypeClient || peerType == models.PeerTypeSite {
+			peer.Type = peerType
+		}
+	}
 	if req.Name != "" {
 		peer.Name = req.Name
 	}

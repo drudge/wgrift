@@ -14,7 +14,56 @@ import (
 	. "github.com/loom-go/web/components"
 )
 
+type peerLabels struct {
+	headerAdd, headerEdit string
+	namePlaceholder       string
+	serverIPsLabel        string
+	serverIPsPlaceholder  string
+	serverIPsHelp         string
+	clientIPsLabel        string
+	clientIPsPlaceholder  string
+	clientIPsHelp         string
+	keepaliveHelp         string
+	submitAdd             string
+}
+
+func labelsForType(peerType string) peerLabels {
+	if peerType == "site" {
+		return peerLabels{
+			headerAdd:            "Add Site",
+			headerEdit:           "Edit Site",
+			namePlaceholder:      "Branch Office, Data Center, etc.",
+			serverIPsLabel:       "Remote Subnets",
+			serverIPsPlaceholder: "Networks behind this site (e.g. 192.168.1.0/24)",
+			serverIPsHelp:        "Subnets reachable through this site's gateway",
+			clientIPsLabel:       "Routes to Advertise",
+			clientIPsPlaceholder: "Subnets this side shares with the remote site",
+			clientIPsHelp:        "Networks on your side the remote site should reach",
+			keepaliveHelp:        "Required if either side is behind NAT",
+			submitAdd:            "Add Site",
+		}
+	}
+	return peerLabels{
+		headerAdd:            "Add Client",
+		headerEdit:           "Edit Client",
+		namePlaceholder:      "Phone, Laptop, etc.",
+		serverIPsLabel:       "Server Allowed IPs",
+		serverIPsPlaceholder: "Subnets behind this peer",
+		serverIPsHelp:        "Auto-filled with tunnel IP if left empty",
+		clientIPsLabel:       "Client Allowed IPs",
+		clientIPsPlaceholder: "Empty = route all traffic through tunnel",
+		clientIPsHelp:        "Leave empty for full tunnel. Add subnets for split tunnel.",
+		keepaliveHelp:        "Keeps connection alive through NAT",
+		submitAdd:            "Add Client",
+	}
+}
+
 func PeerEditForm(ifaceID string, peer peerData, onSaved func()) loom.Node {
+	initialType := peer.Type
+	if initialType == "" {
+		initialType = "client"
+	}
+	editPeerType, setEditPeerType := Signal(initialType)
 	name, setName := Signal(peer.Name)
 	address, setAddress := Signal(peer.Address)
 	dns, setDNS := Signal(peer.DNS)
@@ -157,6 +206,7 @@ func PeerEditForm(ifaceID string, peer peerData, onSaved func()) loom.Node {
 			ips := strings.Join(allowedIPs, ", ")
 			clientIPs := strings.Join(clientAllowedIPs, ", ")
 			body := map[string]any{
+				"type":                 editPeerType(),
 				"name":                 name(),
 				"address":              address(),
 				"allowed_ips":          ips,
@@ -185,29 +235,45 @@ func PeerEditForm(ifaceID string, peer peerData, onSaved func()) loom.Node {
 	}
 
 	return Card(
-		CardHeader("Edit Peer"),
+		Bind(func() loom.Node {
+			lbl := labelsForType(editPeerType())
+			return Span(Apply(Attr{"class": "text-[11px] font-semibold text-ink-3 uppercase tracking-[0.15em]"}), Text(lbl.headerEdit))
+		}),
 
 		ErrorAlert(errMsg),
 
-		Div(
-			Apply(Attr{"class": "grid grid-cols-1 sm:grid-cols-2 gap-4"}),
-			FormField("Name", "text", "Phone, Laptop, etc.", name, func(v string) { setName(v) }),
-			FormField("Tunnel Address", "text", "10.100.0.2/32", address, func(v string) { setAddress(v) }),
-			chipInput("Server Allowed IPs", "Subnets behind this peer", chipsID, inputID, addIP, func() []string { return allowedIPs }, func() {
-				if len(allowedIPs) > 0 {
-					allowedIPs = allowedIPs[:len(allowedIPs)-1]
-					doRenderChips()
-				}
-			}),
-			chipInput("Client Allowed IPs", "Subnets peer routes through tunnel (empty = full tunnel)", clientChipsID, clientInputID, addClientIP, func() []string { return clientAllowedIPs }, func() {
-				if len(clientAllowedIPs) > 0 {
-					clientAllowedIPs = clientAllowedIPs[:len(clientAllowedIPs)-1]
-					doRenderClientChips()
-				}
-			}),
-			FormField("DNS", "text", "Override interface DNS (optional)", dns, func(v string) { setDNS(v) }),
-			FormField("Keepalive (sec)", "number", "25", keepalive, func(v string) { setKeepalive(v) }),
-		),
+		// Type selector
+		Bind(func() loom.Node {
+			t := editPeerType()
+			return Div(
+				Apply(Attr{"class": "grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 mb-5"}),
+				typeSelectorCard("laptop", "Client", "Remote device connecting to your network", t == "client", func() { setEditPeerType("client") }),
+				typeSelectorCard("building-2", "Site", "Gateway connecting two networks together", t == "site", func() { setEditPeerType("site") }),
+			)
+		}),
+
+		Bind(func() loom.Node {
+			lbl := labelsForType(editPeerType())
+			return Div(
+				Apply(Attr{"class": "grid grid-cols-1 sm:grid-cols-2 gap-4"}),
+				FormField("Name", "text", lbl.namePlaceholder, name, func(v string) { setName(v) }),
+				FormField("Tunnel Address", "text", "10.100.0.2/32", address, func(v string) { setAddress(v) }),
+				chipInput(lbl.serverIPsLabel, lbl.serverIPsPlaceholder, lbl.serverIPsHelp, chipsID, inputID, addIP, func() []string { return allowedIPs }, func() {
+					if len(allowedIPs) > 0 {
+						allowedIPs = allowedIPs[:len(allowedIPs)-1]
+						doRenderChips()
+					}
+				}),
+				chipInput(lbl.clientIPsLabel, lbl.clientIPsPlaceholder, lbl.clientIPsHelp, clientChipsID, clientInputID, addClientIP, func() []string { return clientAllowedIPs }, func() {
+					if len(clientAllowedIPs) > 0 {
+						clientAllowedIPs = clientAllowedIPs[:len(clientAllowedIPs)-1]
+						doRenderClientChips()
+					}
+				}),
+				FormField("DNS", "text", "Override interface DNS (optional)", dns, func(v string) { setDNS(v) }),
+				FormFieldWithHelp("Keepalive (sec)", "number", "25", lbl.keepaliveHelp, keepalive, func(v string) { setKeepalive(v) }),
+			)
+		}),
 
 		Div(
 			Apply(Attr{"class": "flex gap-2 mt-2"}),
@@ -238,7 +304,11 @@ func renderChipList(containerID string, items []string, onRemove func(int)) {
 }
 
 // chipInput renders a label + chip container + text input for entering CIDRs.
-func chipInput(label, placeholder, chipsID, inputID string, addFn func(string), _ func() []string, onBackspace func()) loom.Node {
+func chipInput(label, placeholder, helpText, chipsID, inputID string, addFn func(string), _ func() []string, onBackspace func()) loom.Node {
+	helpClass := "text-xs text-ink-4 mt-1.5"
+	if helpText == "" {
+		helpClass = "hidden"
+	}
 	return Div(
 		Apply(Attr{"class": "mb-4"}),
 		Elem("label", Apply(Attr{"class": "block text-[11px] font-semibold text-ink-3 mb-2 uppercase tracking-[0.08em]"}), Text(label)),
@@ -277,6 +347,7 @@ func chipInput(label, placeholder, chipsID, inputID string, addFn func(string), 
 				}}),
 			),
 		),
+		P(Apply(Attr{"class": helpClass}), Text(helpText)),
 	)
 }
 
@@ -328,6 +399,7 @@ func nextAvailableIP(ifaceAddr string, usedAddrs []string) string {
 }
 
 func PeerForm(ifaceID string, ifaceAddr string, usedAddrs []string, onCreated func()) loom.Node {
+	peerType, setPeerType := Signal("client")
 	name, setName := Signal("")
 	address, setAddress := Signal(nextAvailableIP(ifaceAddr, usedAddrs))
 	dns, setDNS := Signal("")
@@ -443,6 +515,7 @@ func PeerForm(ifaceID string, ifaceAddr string, usedAddrs []string, onCreated fu
 			ips := strings.Join(allowedIPs, ", ")
 			clientIPs := strings.Join(clientAllowedIPs, ", ")
 			body := map[string]any{
+				"type":               peerType(),
 				"name":               name(),
 				"address":            address(),
 				"allowed_ips":        ips,
@@ -471,29 +544,45 @@ func PeerForm(ifaceID string, ifaceAddr string, usedAddrs []string, onCreated fu
 	}
 
 	return Card(
-		CardHeader("Add Peer"),
+		Bind(func() loom.Node {
+			lbl := labelsForType(peerType())
+			return Span(Apply(Attr{"class": "text-[11px] font-semibold text-ink-3 uppercase tracking-[0.15em]"}), Text(lbl.headerAdd))
+		}),
 
 		ErrorAlert(errMsg),
 
-		Div(
-			Apply(Attr{"class": "grid grid-cols-1 sm:grid-cols-2 gap-4"}),
-			FormField("Name", "text", "Phone, Laptop, etc.", name, func(v string) { setName(v) }),
-			FormField("Tunnel Address", "text", "10.100.0.2/32", address, func(v string) { setAddress(v) }),
-			chipInput("Server Allowed IPs", "Subnets behind this peer", chipsID, inputID, addIP, func() []string { return allowedIPs }, func() {
-				if len(allowedIPs) > 0 {
-					allowedIPs = allowedIPs[:len(allowedIPs)-1]
-					doRenderChips()
-				}
-			}),
-			chipInput("Client Allowed IPs", "Subnets peer routes through tunnel (empty = full tunnel)", clientChipsID, clientInputID, addClientIP, func() []string { return clientAllowedIPs }, func() {
-				if len(clientAllowedIPs) > 0 {
-					clientAllowedIPs = clientAllowedIPs[:len(clientAllowedIPs)-1]
-					doRenderClientChips()
-				}
-			}),
-			FormField("DNS", "text", "Override interface DNS (optional)", dns, func(v string) { setDNS(v) }),
-			FormField("Keepalive (sec)", "number", "25", keepalive, func(v string) { setKeepalive(v) }),
-		),
+		// Type selector
+		Bind(func() loom.Node {
+			t := peerType()
+			return Div(
+				Apply(Attr{"class": "grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 mb-5"}),
+				typeSelectorCard("laptop", "Client", "Remote device connecting to your network", t == "client", func() { setPeerType("client") }),
+				typeSelectorCard("building-2", "Site", "Gateway connecting two networks together", t == "site", func() { setPeerType("site") }),
+			)
+		}),
+
+		Bind(func() loom.Node {
+			lbl := labelsForType(peerType())
+			return Div(
+				Apply(Attr{"class": "grid grid-cols-1 sm:grid-cols-2 gap-4"}),
+				FormField("Name", "text", lbl.namePlaceholder, name, func(v string) { setName(v) }),
+				FormField("Tunnel Address", "text", "10.100.0.2/32", address, func(v string) { setAddress(v) }),
+				chipInput(lbl.serverIPsLabel, lbl.serverIPsPlaceholder, lbl.serverIPsHelp, chipsID, inputID, addIP, func() []string { return allowedIPs }, func() {
+					if len(allowedIPs) > 0 {
+						allowedIPs = allowedIPs[:len(allowedIPs)-1]
+						doRenderChips()
+					}
+				}),
+				chipInput(lbl.clientIPsLabel, lbl.clientIPsPlaceholder, lbl.clientIPsHelp, clientChipsID, clientInputID, addClientIP, func() []string { return clientAllowedIPs }, func() {
+					if len(clientAllowedIPs) > 0 {
+						clientAllowedIPs = clientAllowedIPs[:len(clientAllowedIPs)-1]
+						doRenderClientChips()
+					}
+				}),
+				FormField("DNS", "text", "Override interface DNS (optional)", dns, func(v string) { setDNS(v) }),
+				FormFieldWithHelp("Keepalive (sec)", "number", "25", lbl.keepaliveHelp, keepalive, func(v string) { setKeepalive(v) }),
+			)
+		}),
 
 		Div(
 			Apply(Attr{"class": "flex flex-wrap items-center gap-4 mt-2"}),
@@ -512,7 +601,10 @@ func PeerForm(ifaceID string, ifaceAddr string, usedAddrs []string, onCreated fu
 				),
 			),
 			Div(Apply(Attr{"class": "flex-1"})),
-			Btn("Add Peer", "primary", doAdd),
+			Bind(func() loom.Node {
+				lbl := labelsForType(peerType())
+				return Btn(lbl.submitAdd, "primary", doAdd)
+			}),
 		),
 	)
 }

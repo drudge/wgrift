@@ -152,6 +152,7 @@ type interfaceData struct {
 type peerData struct {
 	ID                  string `json:"id"`
 	InterfaceID         string `json:"interface_id"`
+	Type                string `json:"type"`
 	Name                string `json:"name"`
 	PublicKey           string `json:"public_key"`
 	Address             string `json:"address"`
