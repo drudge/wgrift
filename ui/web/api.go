@@ -248,12 +248,25 @@ type peerData struct {
 	TransferTx          int64  `json:"transfer_tx"`
 }
 
+type activeConnectionData struct {
+	InterfaceID   string `json:"interface_id"`
+	PeerID        string `json:"peer_id"`
+	PeerName      string `json:"peer_name"`
+	PeerType      string `json:"peer_type"`
+	Address       string `json:"address"`
+	Endpoint      string `json:"endpoint,omitempty"`
+	LastHandshake string `json:"last_handshake"`
+	TransferRx    int64  `json:"transfer_rx"`
+	TransferTx    int64  `json:"transfer_tx"`
+}
+
 type dashboardData struct {
-	Interfaces  []interfaceSummaryData `json:"interfaces"`
-	TotalPeers  int                    `json:"total_peers"`
-	ActivePeers int                    `json:"active_peers"`
-	TotalRx     int64                  `json:"total_rx"`
-	TotalTx     int64                  `json:"total_tx"`
+	Interfaces        []interfaceSummaryData `json:"interfaces"`
+	ActiveConnections []activeConnectionData `json:"active_connections"`
+	TotalPeers        int                    `json:"total_peers"`
+	ActivePeers       int                    `json:"active_peers"`
+	TotalRx           int64                  `json:"total_rx"`
+	TotalTx           int64                  `json:"total_tx"`
 }
 
 type interfaceSummaryData struct {
