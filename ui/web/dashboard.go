@@ -12,13 +12,36 @@ import (
 	. "github.com/loom-go/web/components"
 )
 
-var dashboardPollInterval js.Value
+var (
+	dashboardPollInterval js.Value
+	cachedDashboard       *dashboardData // survives refreshRoute remounts
+)
 
 func DashboardView() loom.Node {
-	data, setData := Signal[*dashboardData](nil)
-	loading, setLoading := Signal(true)
+	// Set up polling — each tick fetches fresh data then does a clean remount
+	// via refreshRoute, which avoids Bind's DOM reconciliation issues with
+	// variable-length lists (active connections changing between polls).
+	if !dashboardPollInterval.IsUndefined() && !dashboardPollInterval.IsNull() {
+		js.Global().Call("clearInterval", dashboardPollInterval)
+	}
+	dashboardPollInterval = js.Global().Call("setInterval", js.FuncOf(func(this js.Value, args []js.Value) any {
+		go func() {
+			var resp apiResponse
+			if err := apiFetch("GET", "/api/v1/dashboard", nil, &resp); err != nil {
+				return
+			}
+			var d dashboardData
+			if err := json.Unmarshal(resp.Data, &d); err == nil {
+				cachedDashboard = &d
+				refreshRoute()
+			}
+		}()
+		return nil
+	}), 5000)
 
-	loadData := func() {
+	// First load — no cached data yet, show spinner and fetch
+	if cachedDashboard == nil {
+		loading, setLoading := Signal(true)
 		go func() {
 			var resp apiResponse
 			if err := apiFetch("GET", "/api/v1/dashboard", nil, &resp); err != nil {
@@ -27,110 +50,91 @@ func DashboardView() loom.Node {
 			}
 			var d dashboardData
 			if err := json.Unmarshal(resp.Data, &d); err == nil {
-				setData(&d)
+				cachedDashboard = &d
+				refreshRoute()
 			}
-			setLoading(false)
 		}()
+		return Div(LoadingView(loading))
 	}
 
-	Effect(func() {
-		loadData()
-		if !dashboardPollInterval.IsUndefined() && !dashboardPollInterval.IsNull() {
-			js.Global().Call("clearInterval", dashboardPollInterval)
+	// Render statically from cached data — no Bind needed
+	d := cachedDashboard
+
+	runningCount := 0
+	for _, iface := range d.Interfaces {
+		if iface.Running {
+			runningCount++
 		}
-		dashboardPollInterval = js.Global().Call("setInterval", js.FuncOf(func(this js.Value, args []js.Value) any {
-			loadData()
-			return nil
-		}), 5000)
-	})
+	}
+
+	// Health indicator dot
+	healthDot := "w-3 h-3 rounded-full flex-shrink-0 "
+	if runningCount > 0 && runningCount == len(d.Interfaces) {
+		healthDot += "bg-green-400 status-pulse"
+	} else if runningCount > 0 {
+		healthDot += "bg-amber-400"
+	} else {
+		healthDot += "bg-ink-4"
+	}
+
+	// Running count color — green when all up, muted when none
+	countColor := "text-ink-2"
+	if runningCount > 0 && runningCount == len(d.Interfaces) {
+		countColor = "text-green-400"
+	} else if runningCount > 0 {
+		countColor = "text-ink-1"
+	}
+
+	ifaceNodes := make([]loom.Node, 0)
+	if len(d.Interfaces) > 0 {
+		ifaceNodes = interfaceCards(d.Interfaces)
+	}
 
 	return Div(
-		LoadingView(loading),
-		Show(func() bool { return !loading() }, func() loom.Node {
-			return Bind(func() loom.Node {
-				d := data()
-				if d == nil {
-					return EmptyState("Unable to load status data")
-				}
+		// ── Page header ──
+		Div(
+			Apply(Attr{"class": "mb-8"}),
+			// Title row with health dot
+			Div(
+				Apply(Attr{"class": "flex items-center gap-3 mb-1.5"}),
+				Div(Apply(Attr{"class": healthDot})),
+				H2(
+					Apply(Attr{"class": "text-2xl font-bold tracking-tight"}),
+					Span(Apply(Attr{"class": countColor + " font-mono tabular-nums"}),
+						Text(fmt.Sprintf("%d", runningCount))),
+					Span(Apply(Attr{"class": "text-ink-1"}),
+						Text(fmt.Sprintf(" of %d %s running", len(d.Interfaces), pluralize(len(d.Interfaces), "interface", "interfaces")))),
+				),
+			),
+			// Stats subtitle
+			Div(
+				Apply(Attr{"class": "text-sm text-ink-2 font-mono tabular-nums pl-6"}),
+				Span(Text(fmt.Sprintf("%d peers · %d active", d.TotalPeers, d.ActivePeers))),
+				Span(Apply(Attr{"class": "hidden sm:inline"}), Text(fmt.Sprintf(" · ↓ %s · ↑ %s", FormatBytes(d.TotalRx), FormatBytes(d.TotalTx)))),
+				Div(Apply(Attr{"class": "sm:hidden text-xs text-ink-3 mt-0.5"}), Text(fmt.Sprintf("↓ %s · ↑ %s", FormatBytes(d.TotalRx), FormatBytes(d.TotalTx)))),
+			),
+		),
 
-				runningCount := 0
-				for _, iface := range d.Interfaces {
-					if iface.Running {
-						runningCount++
-					}
-				}
+		// ── Active Connections ──
+		activeConnectionsSection(d.ActiveConnections),
 
-				// Health indicator dot
-				healthDot := "w-3 h-3 rounded-full flex-shrink-0 "
-				if runningCount > 0 && runningCount == len(d.Interfaces) {
-					healthDot += "bg-green-400 status-pulse"
-				} else if runningCount > 0 {
-					healthDot += "bg-amber-400"
-				} else {
-					healthDot += "bg-ink-4"
+		// ── Interfaces ──
+		Div(
+			Div(
+				Apply(Attr{"class": "flex items-center justify-between mb-4"}),
+				H3(Apply(Attr{"class": "text-[11px] font-semibold text-ink-3 uppercase tracking-[0.15em]"}), Text("Interfaces")),
+				Btn("New Interface", "primary", func() { navigate("/interfaces?action=create") }),
+			),
+			func() loom.Node {
+				if len(ifaceNodes) == 0 {
+					return EmptyState("No interfaces configured")
 				}
-
-				// Running count color — green when all up, muted when none
-				countColor := "text-ink-2"
-				if runningCount > 0 && runningCount == len(d.Interfaces) {
-					countColor = "text-green-400"
-				} else if runningCount > 0 {
-					countColor = "text-ink-1"
-				}
-
-				ifaceNodes := make([]loom.Node, 0)
-				if len(d.Interfaces) > 0 {
-					ifaceNodes = interfaceCards(d.Interfaces)
-				}
-
 				return Div(
-					// ── Page header ──
-					Div(
-						Apply(Attr{"class": "mb-8"}),
-						// Title row with health dot
-						Div(
-							Apply(Attr{"class": "flex items-center gap-3 mb-1.5"}),
-							Div(Apply(Attr{"class": healthDot})),
-							H2(
-								Apply(Attr{"class": "text-2xl font-bold tracking-tight"}),
-								Span(Apply(Attr{"class": countColor + " font-mono tabular-nums"}),
-									Text(fmt.Sprintf("%d", runningCount))),
-								Span(Apply(Attr{"class": "text-ink-1"}),
-									Text(fmt.Sprintf(" of %d %s running", len(d.Interfaces), pluralize(len(d.Interfaces), "interface", "interfaces")))),
-							),
-						),
-						// Stats subtitle
-						Div(
-							Apply(Attr{"class": "text-sm text-ink-2 font-mono tabular-nums pl-6"}),
-							Span(Text(fmt.Sprintf("%d peers · %d active", d.TotalPeers, d.ActivePeers))),
-							Span(Apply(Attr{"class": "hidden sm:inline"}), Text(fmt.Sprintf(" · ↓ %s · ↑ %s", FormatBytes(d.TotalRx), FormatBytes(d.TotalTx)))),
-							Div(Apply(Attr{"class": "sm:hidden text-xs text-ink-3 mt-0.5"}), Text(fmt.Sprintf("↓ %s · ↑ %s", FormatBytes(d.TotalRx), FormatBytes(d.TotalTx)))),
-						),
-					),
-
-					// ── Active Connections ──
-					activeConnectionsSection(d.ActiveConnections),
-
-					// ── Interfaces ──
-					Div(
-						Div(
-							Apply(Attr{"class": "flex items-center justify-between mb-4"}),
-							H3(Apply(Attr{"class": "text-[11px] font-semibold text-ink-3 uppercase tracking-[0.15em]"}), Text("Interfaces")),
-							Btn("New Interface", "primary", func() { navigate("/interfaces?action=create") }),
-						),
-						func() loom.Node {
-							if len(ifaceNodes) == 0 {
-								return EmptyState("No interfaces configured")
-							}
-							return Div(
-								Apply(Attr{"class": "space-y-2"}),
-								Fragment(ifaceNodes...),
-							)
-						}(),
-					),
+					Apply(Attr{"class": "space-y-2"}),
+					Fragment(ifaceNodes...),
 				)
-			})
-		}),
+			}(),
+		),
 	)
 }
 
