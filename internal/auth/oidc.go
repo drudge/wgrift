@@ -29,17 +29,31 @@ type OIDCService struct {
 	providers map[string]*resolvedProvider // keyed by provider ID
 	store     store.Store
 	enc       *crypto.Encryptor
+	ready     chan struct{}
+	readyOnce sync.Once
 }
 
-// NewOIDCService creates an OIDC service and loads providers from the database.
+// NewOIDCService creates an OIDC service and starts loading providers in the background.
 func NewOIDCService(s store.Store, enc *crypto.Encryptor) *OIDCService {
 	svc := &OIDCService{
 		providers: make(map[string]*resolvedProvider),
 		store:     s,
 		enc:       enc,
+		ready:     make(chan struct{}),
 	}
-	svc.Reload()
+	go svc.Reload() // Non-blocking: discover in background
 	return svc
+}
+
+// WaitReady blocks until the initial OIDC discovery has completed or the
+// context is cancelled. Returns true if ready, false if the context expired.
+func (s *OIDCService) WaitReady(ctx context.Context) bool {
+	select {
+	case <-s.ready:
+		return true
+	case <-ctx.Done():
+		return false
+	}
 }
 
 // Reload loads all enabled OIDC providers from the database and performs discovery.
@@ -93,6 +107,8 @@ func (s *OIDCService) Reload() {
 	s.mu.Lock()
 	s.providers = resolved
 	s.mu.Unlock()
+
+	s.readyOnce.Do(func() { close(s.ready) })
 }
 
 // ListProviders returns info about enabled and resolved OIDC providers.

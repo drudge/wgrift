@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"time"
@@ -9,6 +10,14 @@ import (
 func (s *Server) handleOIDCLogin(w http.ResponseWriter, r *http.Request) {
 	if s.oidc == nil {
 		writeError(w, http.StatusNotFound, "OIDC not configured")
+		return
+	}
+
+	// Wait briefly for OIDC discovery if it hasn't finished yet.
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+	if !s.oidc.WaitReady(ctx) {
+		writeError(w, http.StatusServiceUnavailable, "OIDC providers are still loading, please try again")
 		return
 	}
 

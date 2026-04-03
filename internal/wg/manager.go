@@ -636,7 +636,7 @@ func (m *Manager) ImportInterface(parsed *confgen.ParsedConfig, id string, iface
 
 // detectExternalIP tries to find the machine's external IP by dialing a UDP socket.
 func detectExternalIP() string {
-	conn, err := net.Dial("udp", "8.8.8.8:80")
+	conn, err := net.DialTimeout("udp", "8.8.8.8:80", 3*time.Second)
 	if err != nil {
 		return "127.0.0.1"
 	}
