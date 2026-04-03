@@ -120,7 +120,7 @@ func resolveRoute() loom.Node {
 
 // stopPolling clears any active polling intervals from views.
 func stopPolling() {
-	for _, iv := range []*js.Value{&detailPollInterval, &dashboardPollInterval, &logsPollInterval} {
+	for _, iv := range []*js.Value{&detailPollInterval, &dashboardPollInterval, &logsPollInterval, &peerConfigPollInterval} {
 		if !iv.IsUndefined() && !iv.IsNull() {
 			js.Global().Call("clearInterval", *iv)
 			*iv = js.Undefined()

@@ -3,6 +3,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"syscall/js"
@@ -11,6 +12,8 @@ import (
 	. "github.com/loom-go/loom/components"
 	. "github.com/loom-go/web/components"
 )
+
+var peerConfigPollInterval js.Value
 
 var privateKeyRe = regexp.MustCompile(`(?m)(PrivateKey\s*=\s*)(.+)$`)
 
@@ -65,6 +68,52 @@ func PeerConfigView(ifaceID, peerID string) loom.Node {
 			}
 			setLoading(false)
 		}()
+	})
+
+	// Poll for first connection — celebrate once per peer
+	Effect(func() {
+		lsKey := "wgrift:celebrated:" + peerID
+		if js.Global().Get("localStorage").Call("getItem", lsKey).Truthy() {
+			return // already celebrated
+		}
+
+		checkConnection := func() {
+			go func() {
+				var resp apiResponse
+				if err := apiFetch("GET", fmt.Sprintf("/api/v1/interfaces/%s/status", ifaceID), nil, &resp); err != nil {
+					return
+				}
+				var s interfaceStatusData
+				if err := json.Unmarshal(resp.Data, &s); err != nil {
+					return
+				}
+				for _, p := range s.Peers {
+					if p.Peer.ID == peerID && p.Connected {
+						js.Global().Get("localStorage").Call("setItem", lsKey, "1")
+						name := peerName()
+						if name == "" {
+							name = peerID[:8] + "..."
+						}
+						showCelebration(name)
+						// Stop polling
+						if !peerConfigPollInterval.IsUndefined() && !peerConfigPollInterval.IsNull() {
+							js.Global().Call("clearInterval", peerConfigPollInterval)
+							peerConfigPollInterval = js.Undefined()
+						}
+						return
+					}
+				}
+			}()
+		}
+
+		checkConnection()
+		if !peerConfigPollInterval.IsUndefined() && !peerConfigPollInterval.IsNull() {
+			js.Global().Call("clearInterval", peerConfigPollInterval)
+		}
+		peerConfigPollInterval = js.Global().Call("setInterval", js.FuncOf(func(this js.Value, args []js.Value) any {
+			checkConnection()
+			return nil
+		}), 3000)
 	})
 
 	downloadConf := func() {
