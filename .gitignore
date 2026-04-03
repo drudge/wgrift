@@ -19,6 +19,9 @@ ui/web/wasm_exec.js
 .vscode/
 *.swp
 
+# Air
+tmp/
+
 # OS
 .DS_Store
 

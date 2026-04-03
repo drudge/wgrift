@@ -5,17 +5,21 @@ WireGuard VPN management platform with CLI, REST API, and WASM web UI.
 ## Build & Development
 
 ```bash
-# GoReleaser (preferred — builds WASM, copies wasm_exec.js, cross-compiles automatically)
+# Mage (local dev — requires: go install github.com/magefile/mage@latest)
+mage dev         # Live reload dev server (Air — watches files, rebuilds WASM+binary, restarts)
+mage serve       # Full local dev (wasm + serve command, no live reload)
+mage serveWeb    # Dev WASM-only server on :8080
+mage test        # Run tests (internal/...)
+mage lint        # golangci-lint
+mage dist        # Production build for linux/amd64
+
+# GoReleaser (release builds — builds WASM, copies wasm_exec.js, cross-compiles automatically)
 goreleaser build --snapshot --clean                 # All targets → dist/
 goreleaser build --snapshot --single-target --clean # Current OS/arch only
 GOOS=linux GOARCH=amd64 goreleaser build --snapshot --single-target --clean  # Linux amd64
-
-# Make (local dev convenience)
-make serve-web   # Dev WASM server on :8080
-make serve       # Full local dev (wasm + serve command)
-make test        # Run tests (internal/...)
-make lint        # golangci-lint
 ```
+
+Air config: `.air.toml` — used by `mage dev` for live reload (requires: `go install github.com/air-verse/air@latest`).
 
 GoReleaser config: `.goreleaser.yaml` — before hooks build WASM and copy `wasm_exec.js` automatically.
 
@@ -152,7 +156,7 @@ Register it in `router.go`'s `stopPolling()`.
 ## Testing
 
 ```bash
-make test                           # All tests
+mage test                           # All tests
 go test ./internal/confgen/...      # Config parser tests
 ```
 
