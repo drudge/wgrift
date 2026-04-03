@@ -150,13 +150,87 @@ func interfaceCard(iface interfaceSummaryData) loom.Node {
 		statusClass = "text-[11px] text-green-400/70 font-medium"
 	}
 
+	// Stats line: peers + optional traffic
+	statsNodes := []loom.Node{
+		Span(
+			Span(Apply(Attr{"class": "text-ink-2 font-semibold"}), Text(fmt.Sprintf("%d", iface.ConnectedPeers))),
+			Text(fmt.Sprintf("/%d peers", iface.TotalPeers)),
+		),
+	}
+	if iface.TotalRx > 0 || iface.TotalTx > 0 {
+		statsNodes = append(statsNodes, Span(
+			Apply(Attr{"class": "text-ink-3"}),
+			Text(fmt.Sprintf("↓%s ↑%s", FormatBytes(iface.TotalRx), FormatBytes(iface.TotalTx))),
+		))
+	}
+
+	// Action buttons
+	actionBtns := func() loom.Node {
+		if iface.Running {
+			return Fragment(
+				Btn("Restart", "ghost", func() {
+					go func() {
+						apiFetch("POST", fmt.Sprintf("/api/v1/interfaces/%s/restart", iface.ID), nil, nil)
+						refreshRoute()
+					}()
+				}),
+				Btn("Stop", "danger", func() {
+					go func() {
+						apiFetch("POST", fmt.Sprintf("/api/v1/interfaces/%s/stop", iface.ID), nil, nil)
+						refreshRoute()
+					}()
+				}),
+			)
+		}
+		return Btn("Start", "primary", func() {
+			go func() {
+				apiFetch("POST", fmt.Sprintf("/api/v1/interfaces/%s/start", iface.ID), nil, nil)
+				refreshRoute()
+			}()
+		})
+	}()
+
 	return Div(
 		Apply(Attr{"class": "bg-surface-1 border border-line-1 rounded-lg hover:border-line-3 transition-all duration-150"}),
 		Div(
 			Apply(Attr{"class": "px-5 py-4"}),
-			// Top row: dot + name + status + desktop stats
+
+			// Desktop: two-column layout — info left, buttons right
 			Div(
-				Apply(Attr{"class": "flex items-center justify-between gap-4"}),
+				Apply(Attr{"class": "hidden sm:flex items-center justify-between gap-4"}),
+				// Left: all info stacked
+				Div(
+					Apply(Attr{"class": "flex items-start gap-3 min-w-0"}),
+					Div(Apply(Attr{"class": dotClass + " mt-1.5"})),
+					Div(
+						Apply(Attr{"class": "min-w-0"}),
+						Div(
+							Apply(Attr{"class": "flex items-center gap-2.5"}),
+							Span(Apply(Attr{"class": "font-mono text-sm font-bold text-ink-1"}), Text(iface.ID)),
+							Span(Apply(Attr{"class": statusClass}), Text(statusText)),
+						),
+						Div(
+							Apply(Attr{"class": "font-mono text-xs text-ink-3 mt-0.5"}),
+							Text(fmt.Sprintf("%s · :%d", iface.Address, iface.ListenPort)),
+						),
+						Div(
+							append([]loom.Node{Apply(Attr{"class": "flex items-center gap-4 text-xs font-mono text-ink-2 mt-1.5"})}, statsNodes...)...,
+						),
+					),
+				),
+				// Right: buttons vertically centered
+				Div(
+					Apply(Attr{"class": "flex items-center gap-1 flex-shrink-0"}),
+					actionBtns,
+					Btn("Manage →", "ghost", func() {
+						navigate(fmt.Sprintf("/interfaces/%s", iface.ID))
+					}),
+				),
+			),
+
+			// Mobile: stacked layout
+			Div(
+				Apply(Attr{"class": "sm:hidden"}),
 				Div(
 					Apply(Attr{"class": "flex items-center gap-3 min-w-0"}),
 					Div(Apply(Attr{"class": dotClass})),
@@ -173,70 +247,16 @@ func interfaceCard(iface interfaceSummaryData) loom.Node {
 						),
 					),
 				),
-				// Desktop-only stats
 				Div(
-					Apply(Attr{"class": "hidden sm:flex items-center gap-4 text-xs font-mono text-ink-2 flex-shrink-0"}),
-					Span(
-						Span(Apply(Attr{"class": "text-ink-1 font-semibold"}), Text(fmt.Sprintf("%d", iface.ConnectedPeers))),
-						Text(fmt.Sprintf("/%d peers", iface.TotalPeers)),
-					),
-					func() loom.Node {
-						if iface.TotalRx > 0 || iface.TotalTx > 0 {
-							return Span(
-								Apply(Attr{"class": "text-ink-3"}),
-								Text(fmt.Sprintf("↓%s ↑%s", FormatBytes(iface.TotalRx), FormatBytes(iface.TotalTx))),
-							)
-						}
-						return Span()
-					}(),
+					append([]loom.Node{Apply(Attr{"class": "flex items-center gap-3 text-xs font-mono text-ink-3 mt-2 pl-5"})}, statsNodes...)...,
 				),
-			),
-			// Mobile stats row
-			Div(
-				Apply(Attr{"class": "sm:hidden flex items-center gap-3 text-xs font-mono text-ink-3 mt-2 pl-5"}),
-				Span(
-					Span(Apply(Attr{"class": "text-ink-2 font-semibold"}), Text(fmt.Sprintf("%d", iface.ConnectedPeers))),
-					Text(fmt.Sprintf("/%d peers", iface.TotalPeers)),
+				Div(
+					Apply(Attr{"class": "flex items-center gap-1 mt-3 pl-5 border-t border-line-1 pt-3"}),
+					actionBtns,
+					Btn("Manage →", "ghost", func() {
+						navigate(fmt.Sprintf("/interfaces/%s", iface.ID))
+					}),
 				),
-				func() loom.Node {
-					if iface.TotalRx > 0 || iface.TotalTx > 0 {
-						return Span(
-							Text(fmt.Sprintf("↓%s ↑%s", FormatBytes(iface.TotalRx), FormatBytes(iface.TotalTx))),
-						)
-					}
-					return Span()
-				}(),
-			),
-			// Actions row
-			Div(
-				Apply(Attr{"class": "flex items-center gap-1 mt-3 sm:mt-2 pl-5 sm:pl-0 sm:justify-end border-t border-line-1 pt-3 sm:border-0 sm:pt-0"}),
-				func() loom.Node {
-					if iface.Running {
-						return Fragment(
-							Btn("Restart", "ghost", func() {
-								go func() {
-									apiFetch("POST", fmt.Sprintf("/api/v1/interfaces/%s/restart", iface.ID), nil, nil)
-									refreshRoute()
-								}()
-							}),
-							Btn("Stop", "danger", func() {
-								go func() {
-									apiFetch("POST", fmt.Sprintf("/api/v1/interfaces/%s/stop", iface.ID), nil, nil)
-									refreshRoute()
-								}()
-							}),
-						)
-					}
-					return Btn("Start", "primary", func() {
-						go func() {
-							apiFetch("POST", fmt.Sprintf("/api/v1/interfaces/%s/start", iface.ID), nil, nil)
-							refreshRoute()
-						}()
-					})
-				}(),
-				Btn("Manage →", "ghost", func() {
-					navigate(fmt.Sprintf("/interfaces/%s", iface.ID))
-				}),
 			),
 		),
 	)

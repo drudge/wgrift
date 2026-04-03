@@ -9,6 +9,13 @@ const (
 	InterfaceTypeClientAccess InterfaceType = "client-access"
 )
 
+type PeerType string
+
+const (
+	PeerTypeClient PeerType = "client"
+	PeerTypeSite   PeerType = "site"
+)
+
 type Interface struct {
 	ID                  string        `json:"id"`
 	Type                InterfaceType `json:"type"`
@@ -26,6 +33,7 @@ type Interface struct {
 type Peer struct {
 	ID                    string     `json:"id"`
 	InterfaceID           string     `json:"interface_id"`
+	Type                  PeerType   `json:"type"`
 	Name                  string     `json:"name"`
 	PublicKey             string     `json:"public_key"`
 	PrivateKeyEncrypted   string     `json:"private_key_encrypted"`

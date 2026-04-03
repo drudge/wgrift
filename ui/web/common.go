@@ -169,6 +169,80 @@ func FocusInput(selector string) {
 	}), 100)
 }
 
+// FormFieldWithHelp renders a label + input + help text.
+func FormFieldWithHelp(label, inputType, placeholder, helpText string, value Accessor[string], onInput func(string)) loom.Node {
+	initVal := value()
+	attrs := Attr{
+		"class":       "w-full px-3.5 py-2.5 bg-surface-0 border border-line-1 rounded-md text-ink-1 text-sm placeholder-ink-4 focus:outline-none focus:border-wg-600/40 focus:ring-1 focus:ring-wg-600/15 transition-colors font-mono",
+		"type":        inputType,
+		"placeholder": placeholder,
+	}
+	if initVal != "" {
+		attrs["value"] = initVal
+	}
+	helpClass := "text-xs text-ink-4 mt-1.5"
+	if helpText == "" {
+		helpClass = "hidden"
+	}
+	return Div(
+		Apply(Attr{"class": "mb-4"}),
+		Elem("label", Apply(Attr{"class": "block text-[11px] font-semibold text-ink-3 mb-2 uppercase tracking-[0.08em]"}), Text(label)),
+		Input(
+			Apply(attrs),
+			Apply(On{"input": func(evt *EventInput) {
+				onInput(evt.InputValue())
+			}}),
+		),
+		P(Apply(Attr{"class": helpClass}), Text(helpText)),
+	)
+}
+
+// TypeBadge renders a badge for the interface type.
+func TypeBadge(ifaceType string) loom.Node {
+	if ifaceType == "site-to-site" {
+		return Badge("Site-to-Site", "amber")
+	}
+	return Badge("Client Access", "teal")
+}
+
+func PeerTypeBadge(peerType string) loom.Node {
+	if peerType == "site" {
+		return Badge("Site", "amber")
+	}
+	return Badge("Client", "teal")
+}
+
+// typeSelectorCard renders a clickable card for interface type selection.
+func typeSelectorCard(iconName, title, description string, selected bool, onClick func()) loom.Node {
+	cls := "flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all "
+	if selected {
+		cls += "border-wg-500/50 bg-wg-600/10"
+	} else {
+		cls += "border-line-1 hover:border-line-2 bg-surface-0"
+	}
+	iconCls := "mt-0.5 "
+	if selected {
+		iconCls += "text-wg-400"
+	} else {
+		iconCls += "text-ink-4"
+	}
+	titleCls := "text-sm font-semibold "
+	if selected {
+		titleCls += "text-wg-400"
+	} else {
+		titleCls += "text-ink-2"
+	}
+	return Div(
+		Apply(Attr{"class": cls}),
+		Apply(On{"click": func() { onClick() }}),
+		Span(Apply(Attr{"class": iconCls}), Icon(iconName, 20)),
+		Div(
+			Span(Apply(Attr{"class": "block " + titleCls}), Text(title)),
+			Span(Apply(Attr{"class": "block text-xs text-ink-4 mt-0.5"}), Text(description)),
+		),
+	)
+}
+
 // FormatBytes formats bytes to human-readable.
 func FormatBytes(b int64) string {
 	const (

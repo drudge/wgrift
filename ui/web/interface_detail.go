@@ -517,16 +517,26 @@ func peerCardList(ifaceID string, peers []peerStatusData) loom.Node {
 					StatusDot(ps.Peer.Enabled, ps.Connected),
 					Div(
 						Apply(Attr{"class": "min-w-0"}),
-						Div(Apply(Attr{"class": "text-sm font-semibold text-ink-1 truncate"}), Text(ps.Peer.Name)),
+						Div(
+							Apply(Attr{"class": "flex items-center gap-2"}),
+							Span(Apply(Attr{"class": "text-sm font-semibold text-ink-1 truncate"}), Text(ps.Peer.Name)),
+							PeerTypeBadge(ps.Peer.Type),
+						),
 						Div(Apply(Attr{"class": "font-mono text-[11px] text-ink-4 truncate"}), Text(truncateKey(ps.Peer.PublicKey))),
 					),
 				),
 				peerActions(ifaceID, ps),
 			),
-			// Bottom row: address + transfer
+			// Bottom row: address + endpoint + transfer
 			Div(
 				Apply(Attr{"class": "flex flex-wrap items-center gap-x-5 gap-y-1 mt-3 pl-[22px] text-xs font-mono text-ink-3"}),
 				Span(Apply(Attr{"class": "text-ink-2"}), Text(ps.Peer.Address)),
+				func() loom.Node {
+					if ps.Peer.Endpoint != "" {
+						return Span(Text(fmt.Sprintf("from %s", ps.Peer.Endpoint)))
+					}
+					return Span()
+				}(),
 				Span(Text(fmt.Sprintf("↓%s  ↑%s", FormatBytes(ps.TransferRx), FormatBytes(ps.TransferTx)))),
 			),
 		}

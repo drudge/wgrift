@@ -105,6 +105,7 @@ func TestPeerCRUD(t *testing.T) {
 	peer := &models.Peer{
 		ID:                  "test-peer-id",
 		InterfaceID:         "wg0",
+		Type:                models.PeerTypeClient,
 		Name:                "Test Peer",
 		PublicKey:           "aGVsbG8gd29ybGQgdGhpcyBpcyBhIHRlc3Qga2V5",
 		PrivateKeyEncrypted: "encrypted-peer-key",

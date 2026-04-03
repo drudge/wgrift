@@ -244,9 +244,9 @@ func createInterfaceForm(existing []interfaceData, onCreated func()) loom.Node {
 			Apply(Attr{"class": "grid grid-cols-1 sm:grid-cols-2 gap-4"}),
 			FormField("Interface ID", "text", "wg0", id, func(v string) { setID(v) }),
 			FormField("Listen Port", "number", "51820", port, func(v string) { setPort(v) }),
-			FormField("Address (CIDR)", "text", "10.100.0.1/24", address, func(v string) { setAddress(v) }),
-			FormField("DNS", "text", "1.1.1.1", dns, func(v string) { setDNS(v) }),
-			FormField("Public Endpoint", "text", "vpn.example.com", endpoint, func(v string) { setEndpoint(v) }),
+			FormFieldWithHelp("Address (CIDR)", "text", "10.100.0.1/24", "The tunnel network. Each peer gets an IP from this range.", address, func(v string) { setAddress(v) }),
+			FormFieldWithHelp("DNS", "text", "1.1.1.1", "DNS resolver pushed to clients (optional)", dns, func(v string) { setDNS(v) }),
+			FormFieldWithHelp("Public Endpoint", "text", "vpn.example.com", "Public hostname or IP that peers connect to", endpoint, func(v string) { setEndpoint(v) }),
 		),
 
 		Div(
