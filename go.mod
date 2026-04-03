@@ -1,6 +1,6 @@
 module github.com/drudge/wgrift
 
-go 1.25.5
+go 1.26.1
 
 require (
 	filippo.io/age v1.3.1
