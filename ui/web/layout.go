@@ -51,6 +51,7 @@ func Layout(content loom.Node) loom.Node {
 			),
 		),
 		ConfirmModal(),
+		EmailModal(),
 		Toast(),
 		CelebrationToast(),
 	)

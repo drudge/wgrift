@@ -21,3 +21,11 @@ logging:
   connection_poll_interval: 30s
   connection_timeout: 180s
   retention_days: 90
+
+# smtp:
+#   host: smtp.example.com
+#   port: 587
+#   username: wgrift@example.com
+#   password_file: /etc/wgrift/smtp_password
+#   from: "wgRift <wgrift@example.com>"
+#   tls: starttls  # starttls, tls, or none

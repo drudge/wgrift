@@ -187,7 +187,7 @@ func PeerConfigView(ifaceID, peerID string) loom.Node {
 
 				// Config text
 				Card(
-					// Mobile: accordion header with action buttons
+										// Mobile: accordion header with action buttons
 					Div(
 						Apply(Attr{"class": "sm:hidden -m-6 p-6"}),
 						Div(
@@ -197,54 +197,68 @@ func PeerConfigView(ifaceID, peerID string) loom.Node {
 								Apply(On{"click": func() { setConfigExpanded(!configExpanded()) }}),
 								Text("Configuration"),
 							),
-							Div(
-								Apply(Attr{"class": "flex items-center gap-2"}),
-								Bind(func() loom.Node {
-									isCopied := copied()
-									btnClass := "inline-flex items-center gap-1.5 text-xs font-medium rounded-lg border cursor-pointer px-3 py-1.5 transition-all duration-300 "
-									svg := icons["copy"](14)
-									label := "Copy"
-									if isCopied {
-										btnClass += "border-green-500/30 text-green-400 bg-green-500/10 scale-105"
-										svg = icons["check"](14)
-										label = "Copied!"
-									} else {
-										btnClass += "border-line-1 text-ink-2 hover:bg-surface-3"
-									}
-									return Button(
-										Apply(Attr{"class": btnClass}),
-										Apply(On{"click": func() {
-											if !copied() {
-												js.Global().Get("navigator").Get("clipboard").Call("writeText", conf())
-												setCopied(true)
-												js.Global().Call("setTimeout", js.FuncOf(func(this js.Value, args []js.Value) any {
-													setCopied(false)
-													return nil
-												}), 2000)
-											}
-										}}),
-										Span(Apply(innerHTML(svg))),
-										Span(Text(label)),
-									)
-								}),
-								Button(
-									Apply(Attr{"class": "inline-flex items-center gap-1.5 text-xs font-medium rounded-lg border transition-all duration-150 cursor-pointer px-3 py-1.5 border-line-1 text-ink-2 hover:bg-surface-3"}),
-									Apply(On{"click": func() { downloadConf() }}),
-									Icon("download", 14),
-									Span(Text("Download")),
-								),
-								Bind(func() loom.Node {
-									chevronCls := "transition-transform duration-200 text-ink-3 cursor-pointer"
-									if configExpanded() {
-										chevronCls += " rotate-180"
-									}
-									return Span(
-										Apply(Attr{"class": chevronCls}),
-										Apply(On{"click": func() { setConfigExpanded(!configExpanded()) }}),
-										Icon("chevron-down", 16),
-									)
-								}),
+							Bind(func() loom.Node {
+								chevronCls := "transition-transform duration-200 text-ink-3 cursor-pointer"
+								if configExpanded() {
+									chevronCls += " rotate-180"
+								}
+								return Span(
+									Apply(Attr{"class": chevronCls}),
+									Apply(On{"click": func() { setConfigExpanded(!configExpanded()) }}),
+									Icon("chevron-down", 16),
+								)
+							}),
+						),
+						Div(
+							Apply(Attr{"class": "grid grid-cols-3 gap-2 mt-3"}),
+							Bind(func() loom.Node {
+								isCopied := copied()
+								btnClass := "inline-flex items-center justify-center gap-1.5 text-sm font-medium rounded-lg border cursor-pointer px-3 py-2.5 transition-all duration-300 "
+								svg := icons["copy"](14)
+								label := "Copy"
+								if isCopied {
+									btnClass += "border-green-500/30 text-green-400 bg-green-500/10 scale-105"
+									svg = icons["check"](14)
+									label = "Copied!"
+								} else {
+									btnClass += "border-line-1 text-ink-2 hover:bg-surface-3"
+								}
+								return Button(
+									Apply(Attr{"class": btnClass}),
+									Apply(On{"click": func() {
+										if !copied() {
+											js.Global().Get("navigator").Get("clipboard").Call("writeText", conf())
+											setCopied(true)
+											js.Global().Call("setTimeout", js.FuncOf(func(this js.Value, args []js.Value) any {
+												setCopied(false)
+												return nil
+											}), 2000)
+										}
+									}}),
+									Span(Apply(innerHTML(svg))),
+									Span(Text(label)),
+								)
+							}),
+							Button(
+								Apply(Attr{"class": "inline-flex items-center justify-center gap-1.5 text-sm font-medium rounded-lg border transition-all duration-150 cursor-pointer px-3 py-2.5 border-line-1 text-ink-2 hover:bg-surface-3"}),
+								Apply(On{"click": func() { downloadConf() }}),
+								Icon("download", 14),
+								Span(Text("Download")),
 							),
+							Bind(func() loom.Node {
+								cls := "inline-flex items-center justify-center gap-1.5 text-sm font-medium rounded-lg border transition-all duration-150 cursor-pointer px-3 py-2.5 border-line-1 text-ink-2 hover:bg-surface-3"
+								if !smtpEnabled() {
+									cls = "hidden"
+								}
+								return Button(
+									Apply(Attr{"class": cls}),
+									Apply(On{"click": func() {
+										ShowEmailModal(peerName(), ifaceID, peerID)
+									}}),
+									Icon("mail", 14),
+									Span(Text("Email")),
+								)
+							}),
 						),
 					),
 					// Desktop: normal header with actions (hidden on mobile)
@@ -287,6 +301,20 @@ func PeerConfigView(ifaceID, peerID string) loom.Node {
 									Icon("download", 14),
 									Span(Text("Download")),
 								),
+								Bind(func() loom.Node {
+									cls := "inline-flex items-center gap-1.5 text-xs font-medium rounded-lg border transition-all duration-150 cursor-pointer px-3 py-1.5 border-line-1 text-ink-2 hover:bg-surface-3"
+									if !smtpEnabled() {
+										cls = "hidden"
+									}
+									return Button(
+										Apply(Attr{"class": cls}),
+										Apply(On{"click": func() {
+											ShowEmailModal(peerName(), ifaceID, peerID)
+										}}),
+										Icon("mail", 14),
+										Span(Text("Email")),
+									)
+								}),
 							),
 						),
 					),

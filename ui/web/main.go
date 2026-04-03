@@ -17,6 +17,7 @@ func jsLog(args ...any) {
 func App() loom.Node {
 	initState()
 	initConfirmModal()
+	initEmailModal()
 	initToast()
 	initMobileNav()
 	initRouter()

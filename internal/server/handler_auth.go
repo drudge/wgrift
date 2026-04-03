@@ -12,8 +12,9 @@ type loginRequest struct {
 }
 
 type sessionResponse struct {
-	User      any    `json:"user"`
-	CSRFToken string `json:"csrf_token"`
+	User        any    `json:"user"`
+	CSRFToken   string `json:"csrf_token"`
+	SMTPEnabled bool   `json:"smtp_enabled,omitempty"`
 }
 
 type setupCheckResponse struct {
@@ -73,8 +74,9 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	})
 
 	writeJSON(w, http.StatusOK, sessionResponse{
-		User:      user,
-		CSRFToken: session.CSRFToken,
+		User:        user,
+		CSRFToken:   session.CSRFToken,
+		SMTPEnabled: s.smtpEnabled(),
 	})
 }
 
@@ -120,8 +122,9 @@ func (s *Server) handleGetSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, sessionResponse{
-		User:      user,
-		CSRFToken: session.CSRFToken,
+		User:        user,
+		CSRFToken:   session.CSRFToken,
+		SMTPEnabled: s.smtpEnabled(),
 	})
 }
 
@@ -160,8 +163,9 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	})
 
 	writeJSON(w, http.StatusCreated, sessionResponse{
-		User:      user,
-		CSRFToken: session.CSRFToken,
+		User:        user,
+		CSRFToken:   session.CSRFToken,
+		SMTPEnabled: s.smtpEnabled(),
 	})
 }
 

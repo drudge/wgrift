@@ -150,7 +150,7 @@ func Tooltip(trigger loom.Node, items []string) loom.Node {
 		)
 	}
 	return Span(
-		Apply(Attr{"class": "tooltip-trigger relative"}),
+		Apply(Attr{"class": "tooltip-trigger relative cursor-pointer", "tabindex": "0"}),
 		trigger,
 		Div(
 			Apply(Attr{"class": "tooltip-body absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 z-50 pointer-events-none"}),
