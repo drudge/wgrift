@@ -1,7 +1,10 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
+	"net/mail"
+	"strings"
 
 	"github.com/drudge/wgrift/internal/models"
 	"github.com/drudge/wgrift/internal/qr"
@@ -17,6 +20,9 @@ type addPeerRequest struct {
 	Endpoint            string `json:"endpoint"`
 	PersistentKeepalive int    `json:"persistent_keepalive"`
 	PSK                 bool   `json:"psk"`
+	AlertOnConnect      bool   `json:"alert_on_connect"`
+	AlertOnDisconnect   bool   `json:"alert_on_disconnect"`
+	AlertEmails         string `json:"alert_emails"`
 }
 
 func (s *Server) handleListPeers(w http.ResponseWriter, r *http.Request) {
@@ -48,6 +54,13 @@ func (s *Server) handleAddPeer(w http.ResponseWriter, r *http.Request) {
 		peerType = models.PeerTypeClient
 	}
 
+	if req.AlertEmails != "" {
+		if err := validateEmails(req.AlertEmails); err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+	}
+
 	peer := &models.Peer{
 		InterfaceID:         ifaceID,
 		Type:                peerType,
@@ -58,6 +71,9 @@ func (s *Server) handleAddPeer(w http.ResponseWriter, r *http.Request) {
 		DNS:                 req.DNS,
 		Endpoint:            req.Endpoint,
 		PersistentKeepalive: req.PersistentKeepalive,
+		AlertOnConnect:      req.AlertOnConnect,
+		AlertOnDisconnect:   req.AlertOnDisconnect,
+		AlertEmails:         req.AlertEmails,
 	}
 
 	if err := s.manager.AddPeer(peer, req.PSK); err != nil {
@@ -77,6 +93,9 @@ type updatePeerRequest struct {
 	DNS                 *string `json:"dns"`
 	Endpoint            string  `json:"endpoint"`
 	PersistentKeepalive int     `json:"persistent_keepalive"`
+	AlertOnConnect      *bool   `json:"alert_on_connect"`
+	AlertOnDisconnect   *bool   `json:"alert_on_disconnect"`
+	AlertEmails         *string `json:"alert_emails"`
 }
 
 func (s *Server) handleUpdatePeer(w http.ResponseWriter, r *http.Request) {
@@ -121,6 +140,21 @@ func (s *Server) handleUpdatePeer(w http.ResponseWriter, r *http.Request) {
 	}
 	peer.Endpoint = req.Endpoint
 	peer.PersistentKeepalive = req.PersistentKeepalive
+	if req.AlertOnConnect != nil {
+		peer.AlertOnConnect = *req.AlertOnConnect
+	}
+	if req.AlertOnDisconnect != nil {
+		peer.AlertOnDisconnect = *req.AlertOnDisconnect
+	}
+	if req.AlertEmails != nil {
+		if *req.AlertEmails != "" {
+			if err := validateEmails(*req.AlertEmails); err != nil {
+				writeError(w, http.StatusBadRequest, err.Error())
+				return
+			}
+		}
+		peer.AlertEmails = *req.AlertEmails
+	}
 
 	if err := s.store.UpdatePeer(peer); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -242,4 +276,17 @@ func (s *Server) handlePeerQR(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "image/png")
 	w.Write(png)
+}
+
+func validateEmails(emails string) error {
+	for _, addr := range strings.Split(emails, ",") {
+		addr = strings.TrimSpace(addr)
+		if addr == "" {
+			continue
+		}
+		if _, err := mail.ParseAddress(addr); err != nil {
+			return fmt.Errorf("invalid email address: %s", addr)
+		}
+	}
+	return nil
 }

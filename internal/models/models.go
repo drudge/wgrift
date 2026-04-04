@@ -44,6 +44,9 @@ type Peer struct {
 	DNS                   string     `json:"dns"`
 	Endpoint              string     `json:"endpoint,omitempty"`
 	PersistentKeepalive   int        `json:"persistent_keepalive"`
+	AlertOnConnect        bool       `json:"alert_on_connect"`
+	AlertOnDisconnect     bool       `json:"alert_on_disconnect"`
+	AlertEmails           string     `json:"alert_emails"`
 	Enabled               bool       `json:"enabled"`
 	ExpiresAt             *time.Time `json:"expires_at,omitempty"`
 	LastHandshake         *time.Time `json:"last_handshake,omitempty"`

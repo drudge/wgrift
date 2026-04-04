@@ -255,6 +255,9 @@ type peerData struct {
 	DNS                 string `json:"dns"`
 	Endpoint            string `json:"endpoint"`
 	PersistentKeepalive int    `json:"persistent_keepalive"`
+	AlertOnConnect      bool   `json:"alert_on_connect"`
+	AlertOnDisconnect   bool   `json:"alert_on_disconnect"`
+	AlertEmails         string `json:"alert_emails"`
 	Enabled             bool   `json:"enabled"`
 	TransferRx          int64  `json:"transfer_rx"`
 	TransferTx          int64  `json:"transfer_tx"`
