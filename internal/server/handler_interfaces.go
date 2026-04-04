@@ -263,10 +263,13 @@ func (s *Server) handleInterfaceStatus(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	// Enrich with connected-since from poller state.
+	// Enrich with connected-since from poller state, falling back to last handshake.
 	for i := range status.Peers {
 		if status.Peers[i].Connected {
 			if t := s.poller.GetConnectedSince(status.Peers[i].Peer.PublicKey); !t.IsZero() {
+				status.Peers[i].ConnectedSince = &t
+			} else if !status.Peers[i].LastHandshake.IsZero() {
+				t = status.Peers[i].LastHandshake
 				status.Peers[i].ConnectedSince = &t
 			}
 		}

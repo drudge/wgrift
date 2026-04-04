@@ -82,6 +82,8 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 					}
 					if t := s.poller.GetConnectedSince(p.Peer.PublicKey); !t.IsZero() {
 						conn.ConnectedSince = t.Format(time.RFC3339)
+					} else if !p.LastHandshake.IsZero() {
+						conn.ConnectedSince = p.LastHandshake.Format(time.RFC3339)
 					}
 					resp.ActiveConnections = append(resp.ActiveConnections, conn)
 				}
