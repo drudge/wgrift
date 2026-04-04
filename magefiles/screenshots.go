@@ -21,9 +21,10 @@ import (
 )
 
 const (
-	screenshotDir = "docs/screenshots"
-	baseURL       = "http://localhost:8080"
-	wasmLoadWait  = 3 * time.Second
+	screenshotDir  = "docs/screenshots"
+	screenshotPort = "18080"
+	baseURL        = "http://localhost:" + screenshotPort
+	wasmLoadWait   = 3 * time.Second
 )
 
 // Screenshots builds the project, starts a demo server, and captures UI screenshots.
@@ -37,8 +38,16 @@ func Screenshots() error {
 		return fmt.Errorf("creating screenshot dir: %w", err)
 	}
 
+	// Write temporary config to use a non-default port
+	cfgContent := fmt.Sprintf("server:\n  listen: \"0.0.0.0:%s\"\n", screenshotPort)
+	cfgPath := "wgrift-screenshots.yaml"
+	if err := os.WriteFile(cfgPath, []byte(cfgContent), 0o644); err != nil {
+		return fmt.Errorf("writing temp config: %w", err)
+	}
+	defer os.Remove(cfgPath)
+
 	// Start demo server
-	cmd := exec.Command("./bin/wgrift", "serve")
+	cmd := exec.Command("./bin/wgrift", "serve", "--config", cfgPath)
 	cmd.Env = append(os.Environ(),
 		"WGRIFT_MASTER_KEY=dev-master-key",
 		"WGRIFT_DEMO_MODE=true",
@@ -187,7 +196,19 @@ func captureScreenshots() error {
 		return fmt.Errorf("logs screenshot: %w", err)
 	}
 
-	// 8. Mobile view
+	// 8. Settings
+	log.Println("Capturing settings page...")
+	if err := chromedp.Run(ctx,
+		chromedp.Navigate(baseURL+"/settings"),
+		chromedp.Sleep(wasmLoadWait),
+	); err != nil {
+		return fmt.Errorf("settings: %w", err)
+	}
+	if err := screenshotCurrent(ctx, "settings.png"); err != nil {
+		return fmt.Errorf("settings screenshot: %w", err)
+	}
+
+	// 9. Mobile view
 	log.Println("Capturing mobile view...")
 	if err := chromedp.Run(ctx,
 		emulation.SetDeviceMetricsOverride(390, 844, 2, true),
