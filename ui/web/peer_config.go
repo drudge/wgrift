@@ -90,7 +90,10 @@ func PeerConfigView(ifaceID, peerID string) loom.Node {
 				for _, p := range s.Peers {
 					if p.Peer.ID == peerID && p.Connected {
 						js.Global().Get("localStorage").Call("setItem", lsKey, "1")
-						name := peerName()
+						name := p.Peer.Name
+						if name == "" {
+							name = peerName()
+						}
 						if name == "" {
 							name = peerID[:8] + "..."
 						}

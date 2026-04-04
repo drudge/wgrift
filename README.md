@@ -8,9 +8,17 @@ A self-hosted WireGuard VPN management platform. Single binary with embedded web
 |:---:|:---:|
 | ![Dashboard](docs/screenshots/dashboard.png) | ![Interface Detail](docs/screenshots/interface-detail.png) |
 
-| Peer Config & QR | Connection Logs |
+| Peer Config & QR | Settings |
 |:---:|:---:|
-| ![Peer Config](docs/screenshots/peer-config.png) | ![Connection Logs](docs/screenshots/logs.png) |
+| ![Peer Config](docs/screenshots/peer-config.png) | ![Settings](docs/screenshots/settings.png) |
+
+| Edit Peer & Email Alerts | Connection Logs |
+|:---:|:---:|
+| ![Edit Peer](docs/screenshots/edit-peer.png) | ![Connection Logs](docs/screenshots/logs.png) |
+
+| Login | Mobile |
+|:---:|:---:|
+| ![Login](docs/screenshots/login.png) | ![Mobile](docs/screenshots/mobile.png) |
 
 ## Features
 
@@ -20,6 +28,9 @@ A self-hosted WireGuard VPN management platform. Single binary with embedded web
 - **Peer Management** — Add/edit/enable/disable peers with auto-generated keys and next available IP
 - **Peer Config & QR** — View, copy, or download client configs; scan QR codes for mobile setup
 - **Connection Logs** — Real-time connection/disconnection tracking per interface
+- **Connection Uptime** — Live per-peer uptime counters on dashboard and interface views
+- **Email Alerts** — Per-peer connect/disconnect email notifications with configurable recipients
+- **SMTP Configuration** — Built-in SMTP settings management with test email support
 - **SSO / OIDC** — OpenID Connect authentication with multi-provider support, JIT user provisioning, and role mapping
 - **User Management** — Multi-user with admin/viewer roles
 - **Mobile Responsive** — Slide-out nav, responsive layouts for all views
