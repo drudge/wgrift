@@ -197,6 +197,11 @@ func interfaceCard(iface interfaceSummaryData) loom.Node {
 		})
 	}()
 
+	mobileGridCols := "grid grid-cols-2 gap-2 mt-3 border-t border-line-1 pt-3"
+	if iface.Running {
+		mobileGridCols = "grid grid-cols-3 gap-2 mt-3 border-t border-line-1 pt-3"
+	}
+
 	return Div(
 		Apply(Attr{"class": "bg-surface-1 border border-line-1 rounded-lg hover:border-line-3 transition-all duration-150"}),
 		Div(
@@ -258,7 +263,7 @@ func interfaceCard(iface interfaceSummaryData) loom.Node {
 					append([]loom.Node{Apply(Attr{"class": "flex items-center gap-3 text-xs font-mono text-ink-3 mt-2 pl-5"})}, statsNodes...)...,
 				),
 				Div(
-					Apply(Attr{"class": "flex items-center gap-1 mt-3 pl-5 border-t border-line-1 pt-3"}),
+					Apply(Attr{"class": mobileGridCols}),
 					actionBtns,
 					Btn("Manage →", "ghost", func() {
 						navigate(fmt.Sprintf("/interfaces/%s", iface.ID))
