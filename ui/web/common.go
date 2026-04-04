@@ -363,9 +363,9 @@ func initUptimeTimers() {
 		var h = Math.floor((s % 86400) / 3600);
 		var m = Math.floor((s % 3600) / 60);
 		var sec = s % 60;
-		if (d > 0) return d + 'd ' + h + 'h';
-		if (h > 0) return h + 'h ' + m + 'm';
-		if (m > 0) return m + 'm ' + sec + 's';
+		if (d > 0) return h > 0 ? d + 'd ' + h + 'h' : d + 'd';
+		if (h > 0) return m > 0 ? h + 'h ' + m + 'm' : h + 'h';
+		if (m > 0) return sec > 0 ? m + 'm ' + sec + 's' : m + 'm';
 		return sec + 's';
 	}
 	if (window._uptimeInterval) clearInterval(window._uptimeInterval);
@@ -395,12 +395,18 @@ func FormatSeconds(totalSecs int64) string {
 	secs := totalSecs % 60
 
 	switch {
-	case days > 0:
+	case days > 0 && hours > 0:
 		return fmt.Sprintf("%dd %dh", days, hours)
-	case hours > 0:
+	case days > 0:
+		return fmt.Sprintf("%dd", days)
+	case hours > 0 && mins > 0:
 		return fmt.Sprintf("%dh %dm", hours, mins)
-	case mins > 0:
+	case hours > 0:
+		return fmt.Sprintf("%dh", hours)
+	case mins > 0 && secs > 0:
 		return fmt.Sprintf("%dm %ds", mins, secs)
+	case mins > 0:
+		return fmt.Sprintf("%dm", mins)
 	default:
 		return fmt.Sprintf("%ds", secs)
 	}
