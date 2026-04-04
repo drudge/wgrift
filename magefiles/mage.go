@@ -3,13 +3,17 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/andybalholm/brotli"
 	"github.com/magefile/mage/mg"
 	"github.com/magefile/mage/sh"
 )
@@ -45,17 +49,74 @@ func Clean() error {
 	return os.RemoveAll("dist")
 }
 
-// Wasm compiles the web UI to WebAssembly and copies wasm_exec.js.
+// Wasm compiles the web UI to WebAssembly, compresses it, and copies wasm_exec.js.
 func Wasm() error {
 	flags, err := ldflags()
 	if err != nil {
 		return err
 	}
-	env := map[string]string{"GOOS": "js", "GOARCH": "wasm"}
+	env := map[string]string{"GOOS": "js", "GOARCH": "wasm", "GOWASM": "satconv,signext"}
 	if err := sh.RunWithV(env, "go", "build", "-ldflags", flags, "-o", "ui/web/wgrift.wasm", "./ui/web"); err != nil {
 		return err
 	}
+	if err := compressWasm("ui/web/wgrift.wasm"); err != nil {
+		return err
+	}
 	return copyWasmExecJS()
+}
+
+// compressWasm produces gzip and brotli compressed variants of the WASM binary.
+func compressWasm(path string) error {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("read wasm: %w", err)
+	}
+
+	// Gzip (best compression)
+	gzPath := path + ".gz"
+	gzFile, err := os.Create(gzPath)
+	if err != nil {
+		return fmt.Errorf("create gzip file: %w", err)
+	}
+	gzWriter, err := gzip.NewWriterLevel(gzFile, gzip.BestCompression)
+	if err != nil {
+		gzFile.Close()
+		return fmt.Errorf("create gzip writer: %w", err)
+	}
+	if _, err := gzWriter.Write(raw); err != nil {
+		gzWriter.Close()
+		gzFile.Close()
+		return fmt.Errorf("gzip write: %w", err)
+	}
+	if err := gzWriter.Close(); err != nil {
+		gzFile.Close()
+		return fmt.Errorf("gzip close: %w", err)
+	}
+	gzFile.Close()
+	gzInfo, _ := os.Stat(gzPath)
+	fmt.Printf("Compressed %s → %s (%.1f MB)\n", filepath.Base(path), filepath.Base(gzPath), float64(gzInfo.Size())/1048576)
+
+	// Brotli (best compression)
+	brPath := path + ".br"
+	brFile, err := os.Create(brPath)
+	if err != nil {
+		return fmt.Errorf("create brotli file: %w", err)
+	}
+	brWriter := brotli.NewWriterLevel(brFile, brotli.BestCompression)
+	if _, err := io.Copy(brWriter, bytes.NewReader(raw)); err != nil {
+		brWriter.Close()
+		brFile.Close()
+		return fmt.Errorf("brotli write: %w", err)
+	}
+	if err := brWriter.Close(); err != nil {
+		brFile.Close()
+		return fmt.Errorf("brotli close: %w", err)
+	}
+	brFile.Close()
+	brInfo, _ := os.Stat(brPath)
+	fmt.Printf("Compressed %s → %s (%.1f MB)\n", filepath.Base(path), filepath.Base(brPath), float64(brInfo.Size())/1048576)
+
+	return nil
 }
 
 // ServeWeb starts the WASM-only dev server on :8080 (no backend).

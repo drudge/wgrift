@@ -5,6 +5,8 @@ dist/
 /serve-web
 /web
 *.wasm
+*.wasm.gz
+*.wasm.br
 
 # WASM support
 ui/web/wasm_exec.js
