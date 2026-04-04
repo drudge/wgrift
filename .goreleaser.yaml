@@ -2,8 +2,9 @@ version: 2
 
 before:
   hooks:
-    - sh -c 'GOOS=js GOARCH=wasm go build -ldflags "-s -w -X github.com/drudge/wgrift/pkg/version.Version={{ .Version }} -X github.com/drudge/wgrift/pkg/version.Commit={{ .Commit }} -X github.com/drudge/wgrift/pkg/version.Date={{ .Date }}" -o ui/web/wgrift.wasm ./ui/web'
+    - sh -c 'GOOS=js GOARCH=wasm GOWASM=satconv,signext go build -ldflags "-s -w -X github.com/drudge/wgrift/pkg/version.Version={{ .Version }} -X github.com/drudge/wgrift/pkg/version.Commit={{ .Commit }} -X github.com/drudge/wgrift/pkg/version.Date={{ .Date }}" -o ui/web/wgrift.wasm ./ui/web'
     - sh -c 'rm -f ui/web/wasm_exec.js && GOROOT=$(go env GOROOT) && { cp "$GOROOT/lib/wasm/wasm_exec.js" ui/web/wasm_exec.js 2>/dev/null || cp "$GOROOT/misc/wasm/wasm_exec.js" ui/web/wasm_exec.js; }'
+    - sh -c 'gzip -9 -k -f ui/web/wgrift.wasm && brotli -9 -k -f ui/web/wgrift.wasm'
 
 builds:
   - id: wgrift

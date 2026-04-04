@@ -150,22 +150,31 @@
                 <span class="text-wg-500">wg</span><span class="text-ink-1">Rift</span>
             </div>
             <div class="spinner"></div>
+            <span id="load-status" class="text-sm text-ink-3">Loading...</span>
         </div>
     </div>
     <div id="app"></div>
 
     <script src="/wasm_exec.js"></script>
     <script>
-        const go = new Go();
-        WebAssembly.instantiateStreaming(fetch("/wgrift.wasm"), go.importObject)
-            .then((result) => {
+        (async () => {
+            const status = document.getElementById('load-status');
+            try {
+                const go = new Go();
+                status.textContent = 'Downloading...';
+                const response = await fetch("/wgrift.wasm");
+                status.textContent = 'Initializing...';
+                const result = await WebAssembly.instantiateStreaming(
+                    Promise.resolve(response), go.importObject
+                );
+                status.textContent = 'Starting...';
                 go.run(result.instance);
-            })
-            .catch((err) => {
+            } catch (err) {
                 console.error("WASM load error:", err);
                 document.getElementById("app").innerHTML =
                     '<div class="flex items-center justify-center h-screen text-wg-500">Failed to load wgRift</div>';
-            });
+            }
+        })();
     </script>
 </body>
 </html>
