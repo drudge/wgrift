@@ -513,7 +513,7 @@ func CelebrationToast() loom.Node {
 		return Div(
 			Apply(Attr{"class": cls}),
 			Div(
-				Apply(Attr{"class": "flex items-center gap-2.5 px-5 py-3 bg-green-600/20 border border-green-500/40 text-green-300 text-sm font-medium rounded-lg shadow-lg"}),
+				Apply(Attr{"class": "flex items-center gap-2.5 px-5 py-3 bg-green-600/70 backdrop-blur-md border border-green-500/50 text-green-200 text-sm font-medium rounded-lg shadow-lg"}),
 				Span(Text(msg)),
 			),
 		)
