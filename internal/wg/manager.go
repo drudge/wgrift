@@ -457,7 +457,7 @@ func (m *Manager) GetStatus(interfaceID string) (*InterfaceStatus, error) {
 		livePeers[p.PublicKey.String()] = p
 	}
 
-	threshold := 180 * time.Second
+	threshold := 135 * time.Second
 	now := time.Now()
 
 	for _, p := range dbPeers {
