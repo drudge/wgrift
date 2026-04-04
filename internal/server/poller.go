@@ -138,8 +138,13 @@ func (p *Poller) poll() {
 					// Still connected — carry forward
 					current.ConnectedSince = prev.ConnectedSince
 				} else if exists {
-					// Transition: disconnected → connected
-					current.ConnectedSince = time.Now().UTC()
+					// Transition: disconnected → connected — prefer LastHandshake
+					// so the timer matches what the API showed before the poller ran
+					if !ps.LastHandshake.IsZero() {
+						current.ConnectedSince = ps.LastHandshake
+					} else {
+						current.ConnectedSince = time.Now().UTC()
+					}
 				} else {
 					// Initial seed — use last "connected" log event from DB if available
 					if t, ok := p.seedConnected[ps.Peer.ID]; ok {
