@@ -223,7 +223,7 @@ func interfaceCard(iface interfaceSummaryData) loom.Node {
 						),
 						Div(
 							Apply(Attr{"class": "font-mono text-xs text-ink-3 mt-0.5"}),
-							Text(fmt.Sprintf("%s · :%d", iface.Address, iface.ListenPort)),
+							Text(fmt.Sprintf("%s · %s", iface.Address, formatListenAddr(iface.Endpoint, iface.ListenPort))),
 						),
 						Div(
 							append([]loom.Node{Apply(Attr{"class": "flex items-center gap-4 text-xs font-mono text-ink-2 mt-1.5"})}, statsNodes...)...,
@@ -255,7 +255,7 @@ func interfaceCard(iface interfaceSummaryData) loom.Node {
 						),
 						Div(
 							Apply(Attr{"class": "font-mono text-xs text-ink-3 mt-0.5"}),
-							Text(fmt.Sprintf("%s · :%d", iface.Address, iface.ListenPort)),
+							Text(fmt.Sprintf("%s · %s", iface.Address, formatListenAddr(iface.Endpoint, iface.ListenPort))),
 						),
 					),
 				),
@@ -335,6 +335,12 @@ func activeConnectionRow(conn activeConnectionData) loom.Node {
 								return Span()
 							}(),
 							Span(Text(fmt.Sprintf("↓%s ↑%s", FormatBytes(conn.TransferRx), FormatBytes(conn.TransferTx)))),
+							func() loom.Node {
+								if conn.ConnectedSince != "" {
+									return UptimeSpan(conn.ConnectedSince, "text-green-400/70")
+								}
+								return Span()
+							}(),
 						),
 					),
 				),
@@ -362,6 +368,12 @@ func activeConnectionRow(conn activeConnectionData) loom.Node {
 							Text(conn.Address),
 						),
 					),
+					func() loom.Node {
+						if conn.ConnectedSince != "" {
+							return UptimeSpan(conn.ConnectedSince, "text-xs font-mono text-green-400/70 flex-shrink-0")
+						}
+						return Span()
+					}(),
 				),
 				Div(
 					Apply(Attr{"class": "flex items-center gap-3 text-xs font-mono text-ink-3 mt-2 pl-5"}),

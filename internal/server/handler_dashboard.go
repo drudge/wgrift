@@ -10,6 +10,7 @@ type interfaceSummary struct {
 	Type           string `json:"type"`
 	Address        string `json:"address"`
 	ListenPort     int    `json:"listen_port"`
+	Endpoint       string `json:"endpoint,omitempty"`
 	Enabled        bool   `json:"enabled"`
 	Running        bool   `json:"running"`
 	PublicKey      string `json:"public_key"`
@@ -20,15 +21,16 @@ type interfaceSummary struct {
 }
 
 type activeConnection struct {
-	InterfaceID   string `json:"interface_id"`
-	PeerID        string `json:"peer_id"`
-	PeerName      string `json:"peer_name"`
-	PeerType      string `json:"peer_type"`
-	Address       string `json:"address"`
-	Endpoint      string `json:"endpoint,omitempty"`
-	LastHandshake string `json:"last_handshake"`
-	TransferRx    int64  `json:"transfer_rx"`
-	TransferTx    int64  `json:"transfer_tx"`
+	InterfaceID    string `json:"interface_id"`
+	PeerID         string `json:"peer_id"`
+	PeerName       string `json:"peer_name"`
+	PeerType       string `json:"peer_type"`
+	Address        string `json:"address"`
+	Endpoint       string `json:"endpoint,omitempty"`
+	LastHandshake  string `json:"last_handshake"`
+	ConnectedSince string `json:"connected_since,omitempty"`
+	TransferRx     int64  `json:"transfer_rx"`
+	TransferTx     int64  `json:"transfer_tx"`
 }
 
 type dashboardResponse struct {
@@ -55,6 +57,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			Type:       string(iface.Type),
 			Address:    iface.Address,
 			ListenPort: iface.ListenPort,
+			Endpoint:   iface.Endpoint,
 			Enabled:    iface.Enabled,
 		}
 
@@ -78,6 +81,11 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 					}
 					if !p.LastHandshake.IsZero() {
 						conn.LastHandshake = p.LastHandshake.Format(time.RFC3339)
+					}
+					if t := s.poller.GetConnectedSince(p.Peer.PublicKey); !t.IsZero() {
+						conn.ConnectedSince = t.Format(time.RFC3339)
+					} else if !p.LastHandshake.IsZero() {
+						conn.ConnectedSince = p.LastHandshake.Format(time.RFC3339)
 					}
 					resp.ActiveConnections = append(resp.ActiveConnections, conn)
 				}

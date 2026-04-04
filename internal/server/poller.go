@@ -23,19 +23,21 @@ type Poller struct {
 	lastState map[string]peerSnapshot
 	notify    chan struct{}
 
-	alertFn func(peer models.Peer, iface models.Interface, event, endpoint string)
+	alertFn       func(peer models.Peer, iface models.Interface, event, endpoint string, duration time.Duration)
+	seedConnected map[string]time.Time // temporary, set only during initial seed
 }
 
 type peerSnapshot struct {
-	Connected  bool
-	TransferRx int64
-	TransferTx int64
-	Endpoint   string
+	Connected      bool
+	ConnectedSince time.Time
+	TransferRx     int64
+	TransferTx     int64
+	Endpoint       string
 }
 
 // NewPoller creates a connection status poller.
 func NewPoller(mgr *wg.Manager, s store.Store, cfg config.Config) *Poller {
-	interval := 30 * time.Second
+	interval := 10 * time.Second
 	if d, err := time.ParseDuration(cfg.Logging.ConnectionPollInterval); err == nil {
 		interval = d
 	}
@@ -62,8 +64,19 @@ func (p *Poller) Kick() {
 
 // Run starts the polling loop. Blocks until ctx is cancelled.
 func (p *Poller) Run(ctx context.Context) {
+	// Load last connected events from DB to restore ConnectedSince on restart.
+	lastConnected, err := p.store.LastConnectedEvents()
+	if err != nil {
+		log.Printf("poller: load last connected events: %v", err)
+	}
+	if lastConnected == nil {
+		lastConnected = make(map[string]time.Time)
+	}
+	p.seedConnected = lastConnected
+
 	// Seed initial state so the first real transition is detected.
 	p.poll()
+	p.seedConnected = nil // free after seed
 
 	ticker := time.NewTicker(p.interval)
 	defer ticker.Stop()
@@ -119,6 +132,31 @@ func (p *Poller) poll() {
 				Endpoint:   ps.Endpoint,
 			}
 
+			// Track when the peer connected
+			if current.Connected {
+				if exists && prev.Connected {
+					// Still connected — carry forward
+					current.ConnectedSince = prev.ConnectedSince
+				} else if exists {
+					// Transition: disconnected → connected — prefer LastHandshake
+					// so the timer matches what the API showed before the poller ran
+					if !ps.LastHandshake.IsZero() {
+						current.ConnectedSince = ps.LastHandshake
+					} else {
+						current.ConnectedSince = time.Now().UTC()
+					}
+				} else {
+					// Initial seed — use last "connected" log event from DB if available
+					if t, ok := p.seedConnected[ps.Peer.ID]; ok {
+						current.ConnectedSince = t
+					} else if !ps.LastHandshake.IsZero() {
+						current.ConnectedSince = ps.LastHandshake
+					} else {
+						current.ConnectedSince = time.Now().UTC()
+					}
+				}
+			}
+
 			// Log state transitions
 			if exists && prev.Connected != current.Connected {
 				event := "disconnected"
@@ -147,7 +185,11 @@ func (p *Poller) poll() {
 						peer.TransferRx = current.TransferRx
 						peer.TransferTx = current.TransferTx
 						ifaceCopy := iface
-						go p.alertFn(peer, ifaceCopy, event, current.Endpoint)
+						var dur time.Duration
+						if event == "disconnected" && !prev.ConnectedSince.IsZero() {
+							dur = time.Since(prev.ConnectedSince)
+						}
+						go p.alertFn(peer, ifaceCopy, event, current.Endpoint, dur)
 					}
 				}
 			}
@@ -166,4 +208,28 @@ func (p *Poller) poll() {
 			p.lastState[key] = current
 		}
 	}
+}
+
+// GetConnectedSince returns when the peer (by public key) connected.
+// Returns zero time if the peer is not connected or not tracked.
+func (p *Poller) GetConnectedSince(publicKey string) time.Time {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if snap, ok := p.lastState[publicKey]; ok && snap.Connected {
+		return snap.ConnectedSince
+	}
+	return time.Time{}
+}
+
+// AllConnectedSince returns a map of public key → connected-since for all connected peers.
+func (p *Poller) AllConnectedSince() map[string]time.Time {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	m := make(map[string]time.Time)
+	for key, snap := range p.lastState {
+		if snap.Connected && !snap.ConnectedSince.IsZero() {
+			m[key] = snap.ConnectedSince
+		}
+	}
+	return m
 }

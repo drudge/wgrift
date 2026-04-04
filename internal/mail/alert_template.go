@@ -45,6 +45,7 @@ body, .body-bg { background-color: transparent !important; }
 .badge-connect-text { color: #166534 !important; }
 .badge-disconnect-bg { background-color: #fee2e2 !important; }
 .badge-disconnect-text { color: #991b1b !important; }
+.iface-badge { background-color: #e5e5ea !important; color: #636366 !important; }
 .footer-text { color: #aeaeb2 !important; }
 .footer-link { color: #aeaeb2 !important; }
 
@@ -66,6 +67,7 @@ body, .body-bg { background-color: transparent !important; }
   .badge-connect-text { color: #86efac !important; }
   .badge-disconnect-bg { background-color: #3b1114 !important; }
   .badge-disconnect-text { color: #fca5a5 !important; }
+  .iface-badge { background-color: #2c2c34 !important; color: #8888a0 !important; }
   .footer-text { color: #606078 !important; }
   .footer-link { color: #606078 !important; }
 }
@@ -81,6 +83,7 @@ body, .body-bg { background-color: transparent !important; }
 <!-- Header -->
 <tr><td class="header-border" style="padding:28px 32px 20px;border-bottom:1px solid #e5e5ea;">
   <span class="h1-text" style="font-size:18px;font-weight:700;color:#1c1c1e;letter-spacing:-0.3px;">{{.PeerName}} {{if .IsConnect}}Connected{{else}}Disconnected{{end}}</span>
+  <span class="iface-badge" style="display:inline-block;background-color:#e5e5ea;color:#636366;font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;vertical-align:text-bottom;margin-left:6px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,monospace;">{{.InterfaceName}}</span>
   <br><span class="sub-text" style="font-size:12px;color:#8e8e93;margin-top:4px;display:inline-block;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,monospace;">{{.PublicKey}}</span>
 </td></tr>
 
@@ -106,6 +109,12 @@ body, .body-bg { background-color: transparent !important; }
   <tr><td style="padding:12px 16px 0;">
     <span class="detail-label" style="font-size:11px;font-weight:600;color:#8e8e93;text-transform:uppercase;letter-spacing:1px;">Transfer</span><br>
     <span class="detail-value" style="font-size:13px;color:#3a3a3c;">{{.TransferRx}} received, {{.TransferTx}} sent</span>
+  </td></tr>
+  {{end}}
+  {{if .Duration}}
+  <tr><td style="padding:12px 16px 0;">
+    <span class="detail-label" style="font-size:11px;font-weight:600;color:#8e8e93;text-transform:uppercase;letter-spacing:1px;">Session Duration</span><br>
+    <span class="detail-value" style="font-size:13px;color:#3a3a3c;">{{.Duration}}</span>
   </td></tr>
   {{end}}
   <tr><td style="padding:12px 16px;">
@@ -138,6 +147,7 @@ type alertTemplateData struct {
 	TransferRx    string
 	TransferTx    string
 	HasTransfer   bool
+	Duration      string
 	Timestamp     string
 	ServerURL     string
 }
@@ -165,6 +175,7 @@ func renderAlertEmail(a AlertEmail) (string, error) {
 		TransferRx:    formatBytes(a.TransferRx),
 		TransferTx:    formatBytes(a.TransferTx),
 		HasTransfer:   a.TransferRx > 0 || a.TransferTx > 0,
+		Duration:      a.Duration,
 		Timestamp:     a.Timestamp,
 		ServerURL:     serverURL,
 	}

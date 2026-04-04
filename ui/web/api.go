@@ -264,15 +264,16 @@ type peerData struct {
 }
 
 type activeConnectionData struct {
-	InterfaceID   string `json:"interface_id"`
-	PeerID        string `json:"peer_id"`
-	PeerName      string `json:"peer_name"`
-	PeerType      string `json:"peer_type"`
-	Address       string `json:"address"`
-	Endpoint      string `json:"endpoint,omitempty"`
-	LastHandshake string `json:"last_handshake"`
-	TransferRx    int64  `json:"transfer_rx"`
-	TransferTx    int64  `json:"transfer_tx"`
+	InterfaceID    string `json:"interface_id"`
+	PeerID         string `json:"peer_id"`
+	PeerName       string `json:"peer_name"`
+	PeerType       string `json:"peer_type"`
+	Address        string `json:"address"`
+	Endpoint       string `json:"endpoint,omitempty"`
+	LastHandshake  string `json:"last_handshake"`
+	ConnectedSince string `json:"connected_since,omitempty"`
+	TransferRx     int64  `json:"transfer_rx"`
+	TransferTx     int64  `json:"transfer_tx"`
 }
 
 type dashboardData struct {
@@ -289,6 +290,7 @@ type interfaceSummaryData struct {
 	Type           string `json:"type"`
 	Address        string `json:"address"`
 	ListenPort     int    `json:"listen_port"`
+	Endpoint       string `json:"endpoint,omitempty"`
 	Enabled        bool   `json:"enabled"`
 	Running        bool   `json:"running"`
 	PublicKey      string `json:"public_key"`
@@ -299,13 +301,14 @@ type interfaceSummaryData struct {
 }
 
 type peerStatusData struct {
-	Peer          peerData `json:"peer"`
-	HasPrivateKey bool     `json:"has_private_key"`
-	LastHandshake string   `json:"last_handshake"`
-	TransferRx    int64    `json:"transfer_rx"`
-	TransferTx    int64    `json:"transfer_tx"`
-	Connected     bool     `json:"connected"`
-	Endpoint      string   `json:"endpoint,omitempty"`
+	Peer           peerData `json:"peer"`
+	HasPrivateKey  bool     `json:"has_private_key"`
+	LastHandshake  string   `json:"last_handshake"`
+	ConnectedSince string   `json:"connected_since,omitempty"`
+	TransferRx     int64    `json:"transfer_rx"`
+	TransferTx     int64    `json:"transfer_tx"`
+	Connected      bool     `json:"connected"`
+	Endpoint       string   `json:"endpoint,omitempty"`
 }
 
 type interfaceStatusData struct {
@@ -325,4 +328,5 @@ type connectionLogData struct {
 	TransferRx  int64  `json:"transfer_rx"`
 	TransferTx  int64  `json:"transfer_tx"`
 	RecordedAt  string `json:"recorded_at"`
+	Duration    int64  `json:"duration,omitempty"`
 }

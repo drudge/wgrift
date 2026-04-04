@@ -612,6 +612,12 @@ func peerCardList(ifaceID string, peers []peerStatusData) loom.Node {
 					return Span()
 				}(),
 				Span(Text(fmt.Sprintf("↓%s  ↑%s", FormatBytes(ps.TransferRx), FormatBytes(ps.TransferTx)))),
+				func() loom.Node {
+					if ps.Connected && ps.ConnectedSince != "" {
+						return UptimeSpan(ps.ConnectedSince, "text-green-400/70")
+					}
+					return Span()
+				}(),
 			),
 			// IP badges row (own row on mobile for tap targets)
 			Div(

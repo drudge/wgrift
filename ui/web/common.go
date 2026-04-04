@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"syscall/js"
 	"time"
@@ -275,6 +276,13 @@ func typeSelectorCard(iconName, title, description string, selected bool, onClic
 }
 
 // FormatBytes formats bytes to human-readable.
+func formatListenAddr(endpoint string, port int) string {
+	if endpoint != "" {
+		return fmt.Sprintf("%s:%d", endpoint, port)
+	}
+	return fmt.Sprintf(":%d", port)
+}
+
 func FormatBytes(b int64) string {
 	const (
 		KB = 1024
@@ -310,6 +318,105 @@ func FormatTimestamp(ts string) string {
 		}
 	}
 	return t.Local().Format("Jan 2, 2006 3:04:05 PM")
+}
+
+// FormatDuration formats an RFC3339 timestamp as a human-readable duration from now.
+func FormatDuration(since string) string {
+	t, err := time.Parse(time.RFC3339, since)
+	if err != nil {
+		t, err = time.Parse(time.RFC3339Nano, since)
+		if err != nil {
+			return ""
+		}
+	}
+	d := time.Now().Sub(t)
+	if d < 0 {
+		d = 0
+	}
+	return FormatSeconds(int64(d.Seconds()))
+}
+
+// parseUnixSince parses an RFC3339 string and returns the Unix timestamp as a string.
+func parseUnixSince(since string) string {
+	t, err := time.Parse(time.RFC3339, since)
+	if err != nil {
+		t, err = time.Parse(time.RFC3339Nano, since)
+		if err != nil {
+			return ""
+		}
+	}
+	return strconv.FormatInt(t.Unix(), 10)
+}
+
+// UptimeSpan renders a span with data-since attribute for the JS-driven uptime timer.
+func UptimeSpan(connectedSince, class string) loom.Node {
+	unix := parseUnixSince(connectedSince)
+	if unix == "" {
+		return Span()
+	}
+	return Span(
+		Apply(Attr{"class": class, "data-since": unix}),
+		Text(FormatDuration(connectedSince)), // initial value, JS takes over
+	)
+}
+
+// initUptimeTimers starts a global JS interval that updates all [data-since] elements every second.
+func initUptimeTimers() {
+	js.Global().Call("eval", `
+(function() {
+	function fmtUptime(s) {
+		if (s < 0) s = 0;
+		var d = Math.floor(s / 86400);
+		var h = Math.floor((s % 86400) / 3600);
+		var m = Math.floor((s % 3600) / 60);
+		var sec = s % 60;
+		if (d > 0) return h > 0 ? d + 'd ' + h + 'h' : d + 'd';
+		if (h > 0) return m > 0 ? h + 'h ' + m + 'm' : h + 'h';
+		if (m > 0) return sec > 0 ? m + 'm ' + sec + 's' : m + 'm';
+		return sec + 's';
+	}
+	if (window._uptimeInterval) clearInterval(window._uptimeInterval);
+	window._uptimeInterval = setInterval(function() {
+		var now = Math.floor(Date.now() / 1000);
+		var els = document.querySelectorAll('[data-since]');
+		for (var i = 0; i < els.length; i++) {
+			var since = parseInt(els[i].getAttribute('data-since'), 10);
+			if (!isNaN(since)) {
+				els[i].textContent = fmtUptime(now - since);
+			}
+		}
+	}, 1000);
+})();
+`)
+}
+
+// FormatSeconds formats a duration in seconds as a human-readable string.
+func FormatSeconds(totalSecs int64) string {
+	if totalSecs <= 0 {
+		return "0s"
+	}
+
+	days := totalSecs / 86400
+	hours := (totalSecs % 86400) / 3600
+	mins := (totalSecs % 3600) / 60
+	secs := totalSecs % 60
+
+	switch {
+	case days > 0 && hours > 0:
+		return fmt.Sprintf("%dd %dh", days, hours)
+	case days > 0:
+		return fmt.Sprintf("%dd", days)
+	case hours > 0 && mins > 0:
+		return fmt.Sprintf("%dh %dm", hours, mins)
+	case hours > 0:
+		return fmt.Sprintf("%dh", hours)
+	case mins > 0 && secs > 0:
+		return fmt.Sprintf("%dm %ds", mins, secs)
+	case mins > 0:
+		return fmt.Sprintf("%dm", mins)
+	default:
+		return fmt.Sprintf("%ds", secs)
+	}
 }
 
 // Toast notification
