@@ -397,13 +397,14 @@ type InterfaceStatus struct {
 
 // PeerStatus holds live status for a peer.
 type PeerStatus struct {
-	Peer          models.Peer `json:"peer"`
-	HasPrivateKey bool        `json:"has_private_key"`
-	LastHandshake time.Time   `json:"last_handshake"`
-	TransferRx    int64       `json:"transfer_rx"`
-	TransferTx    int64       `json:"transfer_tx"`
-	Connected     bool        `json:"connected"`
-	Endpoint      string      `json:"endpoint,omitempty"`
+	Peer           models.Peer `json:"peer"`
+	HasPrivateKey  bool        `json:"has_private_key"`
+	LastHandshake  time.Time   `json:"last_handshake"`
+	TransferRx     int64       `json:"transfer_rx"`
+	TransferTx     int64       `json:"transfer_tx"`
+	Connected      bool        `json:"connected"`
+	Endpoint       string      `json:"endpoint,omitempty"`
+	ConnectedSince *time.Time  `json:"connected_since,omitempty"`
 }
 
 // GetStatus returns live status for an interface from wgctrl.

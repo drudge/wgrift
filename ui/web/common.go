@@ -312,6 +312,45 @@ func FormatTimestamp(ts string) string {
 	return t.Local().Format("Jan 2, 2006 3:04:05 PM")
 }
 
+// FormatDuration formats an RFC3339 timestamp as a human-readable duration from now.
+func FormatDuration(since string) string {
+	t, err := time.Parse(time.RFC3339, since)
+	if err != nil {
+		t, err = time.Parse(time.RFC3339Nano, since)
+		if err != nil {
+			return ""
+		}
+	}
+	d := time.Now().Sub(t)
+	if d < 0 {
+		d = 0
+	}
+	return FormatSeconds(int64(d.Seconds()))
+}
+
+// FormatSeconds formats a duration in seconds as a human-readable string.
+func FormatSeconds(totalSecs int64) string {
+	if totalSecs <= 0 {
+		return "0s"
+	}
+
+	days := totalSecs / 86400
+	hours := (totalSecs % 86400) / 3600
+	mins := (totalSecs % 3600) / 60
+	secs := totalSecs % 60
+
+	switch {
+	case days > 0:
+		return fmt.Sprintf("%dd %dh", days, hours)
+	case hours > 0:
+		return fmt.Sprintf("%dh %dm", hours, mins)
+	case mins > 0:
+		return fmt.Sprintf("%dm %ds", mins, secs)
+	default:
+		return fmt.Sprintf("%ds", secs)
+	}
+}
+
 // Toast notification
 var (
 	toastMsg    func() string

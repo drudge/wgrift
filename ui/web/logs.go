@@ -147,7 +147,19 @@ func LogsView(initialIfaceID string) loom.Node {
 										return Span()
 									}(),
 								),
-								Div(Apply(Attr{"class": "text-[11px] text-ink-4 mt-0.5"}), Text(FormatTimestamp(log.RecordedAt))),
+								Div(
+									Apply(Attr{"class": "flex items-center gap-2 text-[11px] text-ink-4 mt-0.5"}),
+									Span(Text(FormatTimestamp(log.RecordedAt))),
+									func() loom.Node {
+										if log.Duration > 0 {
+											return Span(
+												Apply(Attr{"class": "text-ink-3"}),
+												Text(fmt.Sprintf("(%s)", FormatSeconds(log.Duration))),
+											)
+										}
+										return Span()
+									}(),
+								),
 								// Mobile transfer stats
 								Div(
 									Apply(Attr{"class": "sm:hidden font-mono text-xs text-ink-3 mt-1.5 flex items-center gap-3"}),

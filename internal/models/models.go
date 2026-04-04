@@ -114,4 +114,5 @@ type ConnectionLog struct {
 	TransferRx  int64     `json:"transfer_rx"`
 	TransferTx  int64     `json:"transfer_tx"`
 	RecordedAt  time.Time `json:"recorded_at"`
+	Duration    int64     `json:"duration,omitempty"` // seconds, computed for disconnect events
 }

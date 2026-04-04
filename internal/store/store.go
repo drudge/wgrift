@@ -68,6 +68,7 @@ type Store interface {
 	CreateConnectionLog(log *models.ConnectionLog) error
 	ListConnectionLogs(interfaceID string, limit, offset int) ([]models.ConnectionLog, int, error)
 	ListPeerConnectionLogs(peerID string, limit, offset int) ([]models.ConnectionLog, int, error)
+	LastConnectedEvents() (map[string]time.Time, error)
 	DeleteOldConnectionLogs(before time.Time) error
 
 	Close() error
