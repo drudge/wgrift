@@ -187,7 +187,7 @@ func PeerConfigView(ifaceID, peerID string) loom.Node {
 
 				// Config text
 				Card(
-										// Mobile: accordion header with action buttons
+					// Mobile: accordion header with action buttons
 					Div(
 						Apply(Attr{"class": "sm:hidden -m-6 p-6"}),
 						Div(
@@ -377,7 +377,7 @@ func PeerConfigView(ifaceID, peerID string) loom.Node {
 							Apply(Attr{"class": "space-y-4 text-sm text-ink-2"}),
 							setupStep("1", "Install WireGuard", "Download and install the WireGuard app for your platform."),
 							Div(
-								Apply(Attr{"class": "grid grid-cols-2 sm:grid-cols-4 gap-3 ml-9"}),
+								Apply(Attr{"class": "grid grid-cols-2 sm:grid-cols-4 gap-3 ml-9 mr-9"}),
 								appLink("macOS", "https://itunes.apple.com/us/app/wireguard/id1451685025?ls=1&mt=12"),
 								appLink("iOS", "https://itunes.apple.com/us/app/wireguard/id1441195209?ls=1&mt=8"),
 								appLink("Android", "https://play.google.com/store/apps/details?id=com.wireguard.android"),

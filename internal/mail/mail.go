@@ -32,6 +32,45 @@ type PeerConfigEmail struct {
 	ServerName string // for branding (e.g. "vpn.example.com")
 }
 
+// AlertEmail holds the data for a peer alert email.
+type AlertEmail struct {
+	To            string
+	PeerName      string
+	PublicKey     string
+	InterfaceName string
+	Event         string // "connected" or "disconnected"
+	Endpoint      string
+	TransferRx    int64
+	TransferTx    int64
+	Timestamp     string
+	ServerName    string // for branding
+}
+
+// SendAlertEmail sends a peer connection alert email.
+func SendAlertEmail(s SMTPSettings, a AlertEmail) error {
+	event := "Connected"
+	if a.Event != "connected" {
+		event = "Disconnected"
+	}
+	subject := fmt.Sprintf("WireGuard Alert: %s %s", a.PeerName, event)
+
+	htmlContent, err := renderAlertEmail(a)
+	if err != nil {
+		return fmt.Errorf("rendering alert email: %w", err)
+	}
+
+	var buf bytes.Buffer
+	buf.WriteString("From: " + s.From + "\r\n")
+	buf.WriteString("To: " + a.To + "\r\n")
+	buf.WriteString("Subject: " + subject + "\r\n")
+	buf.WriteString("MIME-Version: 1.0\r\n")
+	buf.WriteString("Content-Type: text/html; charset=utf-8\r\n")
+	buf.WriteString("\r\n")
+	buf.WriteString(htmlContent)
+
+	return sendMail(s, a.To, buf.Bytes())
+}
+
 // SendPeerConfig sends a peer configuration email with .conf attachment and inline QR code.
 func SendPeerConfig(s SMTPSettings, p PeerConfigEmail) error {
 	subject := "WireGuard Configuration"

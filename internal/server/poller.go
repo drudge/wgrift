@@ -22,6 +22,8 @@ type Poller struct {
 	mu        sync.Mutex
 	lastState map[string]peerSnapshot
 	notify    chan struct{}
+
+	alertFn func(peer models.Peer, iface models.Interface, event, endpoint string)
 }
 
 type peerSnapshot struct {
@@ -135,6 +137,18 @@ func (p *Poller) poll() {
 
 				if err := p.store.CreateConnectionLog(logEntry); err != nil {
 					log.Printf("poller: log connection event: %v", err)
+				}
+
+				if p.alertFn != nil {
+					shouldAlert := (event == "connected" && ps.Peer.AlertOnConnect) ||
+						(event == "disconnected" && ps.Peer.AlertOnDisconnect)
+					if shouldAlert && ps.Peer.AlertEmails != "" {
+						peer := ps.Peer
+						peer.TransferRx = current.TransferRx
+						peer.TransferTx = current.TransferTx
+						ifaceCopy := iface
+						go p.alertFn(peer, ifaceCopy, event, current.Endpoint)
+					}
 				}
 			}
 

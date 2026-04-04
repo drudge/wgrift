@@ -72,6 +72,9 @@ func PeerEditForm(ifaceID string, peer peerData, onSaved func()) loom.Node {
 		kaDefault = strconv.Itoa(peer.PersistentKeepalive)
 	}
 	keepalive, setKeepalive := Signal(kaDefault)
+	alertConnect, setAlertConnect := Signal(peer.AlertOnConnect)
+	alertDisconnect, setAlertDisconnect := Signal(peer.AlertOnDisconnect)
+	alertEmails, setAlertEmails := Signal(peer.AlertEmails)
 	errMsg, setErrMsg := Signal(ErrorInfo{})
 	FocusInput(`input[placeholder="Phone, Laptop, etc."]`)
 
@@ -187,6 +190,8 @@ func PeerEditForm(ifaceID string, peer peerData, onSaved func()) loom.Node {
 				addClientIP(val)
 			}
 		}
+		// Flush pending email input
+		flushAlertEmailInput(setAlertEmails, alertEmails)
 		// Auto-add tunnel IP as /32 to server AllowedIPs if empty
 		if len(allowedIPs) == 0 && address() != "" {
 			tunnelIP := address()
@@ -213,6 +218,9 @@ func PeerEditForm(ifaceID string, peer peerData, onSaved func()) loom.Node {
 				"client_allowed_ips":   clientIPs,
 				"dns":                  dns(),
 				"persistent_keepalive": 0,
+				"alert_on_connect":     alertConnect(),
+				"alert_on_disconnect":  alertDisconnect(),
+				"alert_emails":         alertEmails(),
 			}
 			if keepalive() != "" {
 				if ka, err := strconv.Atoi(keepalive()); err == nil {
@@ -275,12 +283,33 @@ func PeerEditForm(ifaceID string, peer peerData, onSaved func()) loom.Node {
 			)
 		}),
 
+		alertSection(alertEmails(), setAlertEmails, alertConnect, setAlertConnect, alertDisconnect, setAlertDisconnect),
+
 		Div(
 			Apply(Attr{"class": "flex gap-2 mt-2"}),
 			Btn("Save", "primary", doSave),
 			Btn("Cancel", "ghost", onSaved),
 		),
 	)
+}
+
+// flushAlertEmailInput reads any pending text from the alert email input and appends it to the signal.
+func flushAlertEmailInput(setAlertEmails func(string), alertEmails func() string) {
+	el := js.Global().Get("document").Call("getElementById", "alert-emails-input")
+	if !el.Truthy() {
+		return
+	}
+	val := strings.TrimSpace(el.Get("value").String())
+	if val == "" {
+		return
+	}
+	current := alertEmails()
+	if current == "" {
+		setAlertEmails(val)
+	} else {
+		setAlertEmails(current + ", " + val)
+	}
+	el.Set("value", "")
 }
 
 // renderChipList renders CIDR chip elements into a DOM container by ID.
@@ -405,6 +434,9 @@ func PeerForm(ifaceID string, ifaceAddr string, usedAddrs []string, onCreated fu
 	dns, setDNS := Signal("")
 	keepalive, setKeepalive := Signal("25")
 	psk, setPSK := Signal(false)
+	alertConnect, setAlertConnect := Signal(false)
+	alertDisconnect, setAlertDisconnect := Signal(false)
+	alertEmails, setAlertEmails := Signal("")
 	errMsg, setErrMsg := Signal(ErrorInfo{})
 	FocusInput(`input[placeholder="Phone, Laptop, etc."]`)
 
@@ -499,6 +531,8 @@ func PeerForm(ifaceID string, ifaceAddr string, usedAddrs []string, onCreated fu
 				addClientIP(val)
 			}
 		}
+		// Flush pending email input
+		flushAlertEmailInput(setAlertEmails, alertEmails)
 		// Auto-add tunnel IP as /32 to server AllowedIPs if empty
 		if len(allowedIPs) == 0 && address() != "" {
 			tunnelIP := address()
@@ -519,13 +553,16 @@ func PeerForm(ifaceID string, ifaceAddr string, usedAddrs []string, onCreated fu
 			ips := strings.Join(allowedIPs, ", ")
 			clientIPs := strings.Join(clientAllowedIPs, ", ")
 			body := map[string]any{
-				"type":               peerType(),
-				"name":               name(),
-				"address":            address(),
-				"allowed_ips":        ips,
-				"client_allowed_ips": clientIPs,
-				"dns":                dns(),
-				"psk":                psk(),
+				"type":                peerType(),
+				"name":                name(),
+				"address":             address(),
+				"allowed_ips":         ips,
+				"client_allowed_ips":  clientIPs,
+				"dns":                 dns(),
+				"psk":                 psk(),
+				"alert_on_connect":    alertConnect(),
+				"alert_on_disconnect": alertDisconnect(),
+				"alert_emails":        alertEmails(),
 			}
 			if keepalive() != "" {
 				if ka, err := strconv.Atoi(keepalive()); err == nil {
@@ -588,6 +625,8 @@ func PeerForm(ifaceID string, ifaceAddr string, usedAddrs []string, onCreated fu
 			)
 		}),
 
+		alertSection(alertEmails(), setAlertEmails, alertConnect, setAlertConnect, alertDisconnect, setAlertDisconnect),
+
 		Div(
 			Apply(Attr{"class": "flex flex-wrap items-center gap-4 mt-2"}),
 			Div(
@@ -610,6 +649,162 @@ func PeerForm(ifaceID string, ifaceAddr string, usedAddrs []string, onCreated fu
 				lbl := labelsForType(peerType())
 				return Btn(lbl.submitAdd, "primary", doAdd)
 			}),
+		),
+	)
+}
+
+func alertSection(
+	initialEmails string,
+	setAlertEmails func(string),
+	alertConnect func() bool, setAlertConnect func(bool),
+	alertDisconnect func() bool, setAlertDisconnect func(bool),
+) loom.Node {
+	var emailList []string
+	for _, e := range strings.Split(initialEmails, ",") {
+		e = strings.TrimSpace(e)
+		if e != "" {
+			emailList = append(emailList, e)
+		}
+	}
+
+	chipsID := "alert-emails-chips"
+	inputID := "alert-emails-input"
+
+	syncEmails := func() {
+		setAlertEmails(strings.Join(emailList, ", "))
+	}
+
+	var doRenderChips func()
+	doRenderChips = func() {
+		renderChipList(chipsID, emailList, func(idx int) {
+			emailList = append(emailList[:idx], emailList[idx+1:]...)
+			doRenderChips()
+			syncEmails()
+		})
+	}
+
+	js.Global().Call("setTimeout", js.FuncOf(func(this js.Value, args []js.Value) any {
+		doRenderChips()
+		return nil
+	}), 0)
+
+	addEmail := func(raw string) {
+		email := strings.TrimSpace(raw)
+		email = strings.TrimRight(email, ",")
+		email = strings.TrimSpace(email)
+		if email == "" {
+			return
+		}
+		if !strings.Contains(email, "@") || !strings.Contains(email, ".") {
+			return
+		}
+		for _, existing := range emailList {
+			if existing == email {
+				return
+			}
+		}
+		emailList = append(emailList, email)
+		doRenderChips()
+		syncEmails()
+		el := js.Global().Get("document").Call("getElementById", inputID)
+		if el.Truthy() {
+			el.Set("value", "")
+		}
+	}
+
+	return Div(
+		Apply(Attr{"class": "mt-4 pt-4 border-t border-line-1"}),
+		Div(
+			Apply(Attr{"class": "flex items-center gap-1.5"}),
+			Span(Apply(Attr{"class": "text-[11px] font-semibold text-ink-3 uppercase tracking-[0.08em]"}), Text("Email Alerts")),
+			Tooltip(
+				Span(Apply(Attr{"class": "text-ink-4 hover:text-ink-2 transition-colors"}), Icon("info", 13)),
+				[]string{"Requires SMTP to be configured in Settings"},
+			),
+		),
+
+		Div(
+			Apply(Attr{"class": "mt-3 mb-4"}),
+			Elem("label", Apply(Attr{"class": "block text-[11px] font-semibold text-ink-3 mb-2 uppercase tracking-[0.08em]"}), Text("Recipients")),
+			Div(
+				Apply(Attr{"class": "w-full px-3 py-2.5 bg-surface-0 border border-line-1 rounded-md text-ink-1 text-sm focus-within:border-wg-600/40 focus-within:ring-1 focus-within:ring-wg-600/15 transition-colors"}),
+				Div(Apply(Attr{"id": chipsID, "class": "flex flex-wrap gap-1"})),
+				Input(
+					Apply(Attr{
+						"id":          inputID,
+						"class":       "w-full bg-transparent text-ink-1 text-sm placeholder-ink-4 focus:outline-none mt-1",
+						"placeholder": "admin@example.com — Enter to add",
+					}),
+					Apply(On{"keydown": func(evt *EventKeyboard) {
+						key := evt.Key()
+						val := evt.Target().Get("value").String()
+						if key == "Enter" || key == "," || key == "Tab" {
+							evt.PreventDefault()
+							addEmail(val)
+						}
+						if key == "Backspace" && val == "" && len(emailList) > 0 {
+							emailList = emailList[:len(emailList)-1]
+							doRenderChips()
+							syncEmails()
+						}
+					}}),
+					Apply(On{"paste": func(evt *Event) {
+						js.Global().Call("setTimeout", js.FuncOf(func(this js.Value, args []js.Value) any {
+							el := js.Global().Get("document").Call("getElementById", inputID)
+							if !el.Truthy() {
+								return nil
+							}
+							val := el.Get("value").String()
+							for _, p := range strings.Split(val, ",") {
+								addEmail(p)
+							}
+							return nil
+						}), 0)
+					}}),
+				),
+			),
+		),
+
+		Div(
+			Apply(Attr{"class": "flex flex-wrap gap-4"}),
+			Div(
+				Apply(Attr{"class": "flex items-center gap-2"}),
+				Bind(func() loom.Node {
+					attrs := Attr{"type": "checkbox", "id": "alert-connect", "class": "accent-wg-600"}
+					if alertConnect() {
+						attrs["checked"] = "checked"
+					}
+					return Input(
+						Apply(attrs),
+						Apply(On{"change": func(evt *Event) {
+							setAlertConnect(evt.Target().Get("checked").Bool())
+						}}),
+					)
+				}),
+				Elem("label",
+					Apply(Attr{"for": "alert-connect", "class": "text-sm text-ink-2"}),
+					Text("Connect"),
+				),
+			),
+			Div(
+				Apply(Attr{"class": "flex items-center gap-2"}),
+				Bind(func() loom.Node {
+					attrs := Attr{"type": "checkbox", "id": "alert-disconnect", "class": "accent-wg-600"}
+					if alertDisconnect() {
+						attrs["checked"] = "checked"
+					}
+					return Input(
+						Apply(attrs),
+						Apply(On{"change": func(evt *Event) {
+							setAlertDisconnect(evt.Target().Get("checked").Bool())
+						}}),
+					)
+				}),
+				Elem("label",
+					Apply(Attr{"for": "alert-disconnect", "class": "text-sm text-ink-2"}),
+					Text("Disconnect"),
+				),
+			),
 		),
 	)
 }

@@ -42,6 +42,7 @@ func New(cfg config.Config, authSvc *auth.Service, oidcSvc *auth.OIDCService, mg
 	}
 
 	srv.poller = NewPoller(mgr, s, cfg)
+	srv.poller.alertFn = srv.sendPeerAlert
 	srv.registerRoutes()
 
 	srv.httpSrv = &http.Server{
