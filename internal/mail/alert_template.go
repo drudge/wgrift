@@ -83,7 +83,7 @@ body, .body-bg { background-color: transparent !important; }
 <!-- Header -->
 <tr><td class="header-border" style="padding:28px 32px 20px;border-bottom:1px solid #e5e5ea;">
   <span class="h1-text" style="font-size:18px;font-weight:700;color:#1c1c1e;letter-spacing:-0.3px;">{{.PeerName}} {{if .IsConnect}}Connected{{else}}Disconnected{{end}}</span>
-  <span class="iface-badge" style="display:inline-block;background-color:#e5e5ea;color:#636366;font-size:11px;font-weight:600;padding:3px 8px;border-radius:4px;vertical-align:middle;margin-left:8px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,monospace;">{{.InterfaceName}}</span>
+  <span class="iface-badge" style="display:inline-block;background-color:#e5e5ea;color:#636366;font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;vertical-align:text-bottom;margin-left:6px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,monospace;">{{.InterfaceName}}</span>
   <br><span class="sub-text" style="font-size:12px;color:#8e8e93;margin-top:4px;display:inline-block;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,monospace;">{{.PublicKey}}</span>
 </td></tr>
 
