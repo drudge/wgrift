@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"net/url"
 	"syscall/js"
 
 	"github.com/loom-go/loom"
@@ -52,7 +53,11 @@ func LoginView() loom.Node {
 
 			var session sessionData
 			if err := unmarshalData(resp.Data, &session); err == nil {
-				js.Global().Get("window").Get("location").Call("reload")
+				if dest := consumeRedirectPath(); dest != "" {
+					js.Global().Get("window").Get("location").Set("href", dest)
+				} else {
+					js.Global().Get("window").Get("location").Call("reload")
+				}
 				return
 			}
 			setLoading(false)
@@ -90,7 +95,11 @@ func LoginView() loom.Node {
 			oidcButtons = append(oidcButtons, Button(
 				Apply(Attr{"class": "w-full px-4 py-3 text-sm font-semibold rounded-lg border border-line-2 text-ink-1 bg-surface-1 hover:bg-surface-2 hover:border-line-3 transition-all duration-100 flex items-center justify-center gap-2"}),
 				Apply(On{"click": func() {
-					js.Global().Get("window").Get("location").Set("href", p.LoginURL)
+					loginURL := p.LoginURL
+					if dest := consumeRedirectPath(); dest != "" {
+						loginURL += "?redirect=" + url.QueryEscape(dest)
+					}
+					js.Global().Get("window").Get("location").Set("href", loginURL)
 				}}),
 				Icon("key-round", 16),
 				Text(label),

@@ -55,16 +55,22 @@ func apiFetchWithTimeout(method, path string, body any, result any, timeout time
 		response := args[0]
 		status := response.Get("status").Int()
 
-		// Session expired — reload to show login
-		if status == 401 && path != "/api/v1/auth/login" && path != "/api/v1/auth/session" {
-			js.Global().Get("window").Get("location").Call("reload")
-			done <- fmt.Errorf("session expired")
-			return nil
-		}
-
 		textPromise := response.Call("text")
 		textPromise.Call("then", js.FuncOf(func(this js.Value, args []js.Value) any {
 			responseText = args[0].String()
+
+			// Session expired — save current path and reload to show login.
+			// The middleware returns 403 (not 401) to avoid nginx-ingress interception.
+			if status == 403 && path != "/api/v1/auth/login" && path != "/api/v1/auth/session" {
+				msg := extractErrorMessage(responseText)
+				if msg == "authentication required" || msg == "invalid session" {
+					saveRedirectPath()
+					js.Global().Get("window").Get("location").Call("reload")
+					done <- fmt.Errorf("session expired")
+					return nil
+				}
+			}
+
 			if status >= 400 {
 				msg := extractErrorMessage(responseText)
 				done <- &apiError{

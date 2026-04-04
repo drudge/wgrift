@@ -87,10 +87,11 @@ type OIDCProvider struct {
 }
 
 type OIDCState struct {
-	State      string    `json:"state"`
-	ProviderID string    `json:"provider_id"`
-	Nonce      string    `json:"nonce"`
-	CreatedAt  time.Time `json:"created_at"`
+	State       string    `json:"state"`
+	ProviderID  string    `json:"provider_id"`
+	Nonce       string    `json:"nonce"`
+	RedirectURL string    `json:"redirect_url"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 type Session struct {

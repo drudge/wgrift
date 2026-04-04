@@ -352,7 +352,11 @@ func parseUnixSince(since string) string {
 func UptimeSpan(connectedSince, class string) loom.Node {
 	unix := parseUnixSince(connectedSince)
 	if unix == "" {
-		return Span()
+		// Identical DOM structure with hidden class to satisfy Loom Bind requirements
+		return Span(
+			Apply(Attr{"class": "hidden"}),
+			Text(""),
+		)
 	}
 	return Span(
 		Apply(Attr{"class": class, "data-since": unix}),

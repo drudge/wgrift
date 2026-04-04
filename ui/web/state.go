@@ -111,3 +111,29 @@ func unmarshalData(raw json.RawMessage, v any) error {
 	}
 	return json.Unmarshal(raw, v)
 }
+
+const redirectStorageKey = "wgrift_redirect"
+
+// saveRedirectPath stores the current browser path in sessionStorage
+// so we can return to it after login.
+func saveRedirectPath() {
+	loc := js.Global().Get("window").Get("location")
+	path := loc.Get("pathname").String()
+	search := loc.Get("search").String()
+	if path != "" && path != "/" {
+		js.Global().Get("sessionStorage").Call("setItem", redirectStorageKey, path+search)
+	}
+}
+
+// consumeRedirectPath reads and removes the saved redirect path from sessionStorage.
+// Returns empty string if none was saved.
+func consumeRedirectPath() string {
+	storage := js.Global().Get("sessionStorage")
+	val := storage.Call("getItem", redirectStorageKey)
+	if val.IsNull() || val.IsUndefined() {
+		return ""
+	}
+	path := val.String()
+	storage.Call("removeItem", redirectStorageKey)
+	return path
+}

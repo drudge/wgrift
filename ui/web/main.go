@@ -41,6 +41,7 @@ func App() loom.Node {
 		return SetupView()
 	}
 	if !preloadAuthed {
+		saveRedirectPath()
 		return LoginView()
 	}
 	return Layout(Router())

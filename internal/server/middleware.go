@@ -30,13 +30,13 @@ func authRequired(authSvc *auth.Service, cookieName string) func(http.Handler) h
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			cookie, err := r.Cookie(cookieName)
 			if err != nil {
-				writeError(w, http.StatusUnauthorized, "authentication required")
+				writeError(w, http.StatusForbidden, "authentication required")
 				return
 			}
 
 			session, user, err := authSvc.ValidateSession(cookie.Value)
 			if err != nil {
-				writeError(w, http.StatusUnauthorized, "invalid session")
+				writeError(w, http.StatusForbidden, "invalid session")
 				return
 			}
 

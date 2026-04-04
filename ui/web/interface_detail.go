@@ -164,28 +164,32 @@ func interfaceDetailContent(ifaceID string, s *interfaceStatusData, status Acces
 				Div(
 					Apply(Attr{"class": "flex flex-wrap items-center gap-2"}),
 					func() loom.Node {
+						startCls := ""
+						runCls := "hidden"
 						if s.Running {
-							return Fragment(
-								Btn("Restart", "ghost", func() {
-									go func() {
-										apiFetch("POST", fmt.Sprintf("/api/v1/interfaces/%s/restart", ifaceID), nil, nil)
-										refreshRoute()
-									}()
-								}),
-								Btn("Stop", "danger", func() {
-									go func() {
-										apiFetch("POST", fmt.Sprintf("/api/v1/interfaces/%s/stop", ifaceID), nil, nil)
-										refreshRoute()
-									}()
-								}),
-							)
+							startCls = "hidden"
+							runCls = ""
 						}
-						return Btn("Start", "primary", func() {
-							go func() {
-								apiFetch("POST", fmt.Sprintf("/api/v1/interfaces/%s/start", ifaceID), nil, nil)
-								refreshRoute()
-							}()
-						})
+						return Fragment(
+							Span(Apply(Attr{"class": startCls}), Btn("Start", "primary", func() {
+								go func() {
+									apiFetch("POST", fmt.Sprintf("/api/v1/interfaces/%s/start", ifaceID), nil, nil)
+									refreshRoute()
+								}()
+							})),
+							Span(Apply(Attr{"class": runCls}), Btn("Restart", "ghost", func() {
+								go func() {
+									apiFetch("POST", fmt.Sprintf("/api/v1/interfaces/%s/restart", ifaceID), nil, nil)
+									refreshRoute()
+								}()
+							})),
+							Span(Apply(Attr{"class": runCls}), Btn("Stop", "danger", func() {
+								go func() {
+									apiFetch("POST", fmt.Sprintf("/api/v1/interfaces/%s/stop", ifaceID), nil, nil)
+									refreshRoute()
+								}()
+							})),
+						)
 					}(),
 					Btn("Sync", "ghost", func() {
 						go func() {
@@ -603,20 +607,24 @@ func peerCardList(ifaceID string, peers []peerStatusData) loom.Node {
 				Apply(Attr{"class": "flex flex-wrap items-center gap-x-5 gap-y-1 mt-3 pl-[22px] text-xs font-mono text-ink-3"}),
 				Span(Apply(Attr{"class": "text-ink-2"}), Text(ps.Peer.Address)),
 				func() loom.Node {
+					cls := "hidden"
+					endpointText := ""
 					if ps.Connected && ps.Endpoint != "" {
-						return Span(
-							Span(Apply(Attr{"class": "text-ink-4"}), Text("from ")),
-							Text(ps.Endpoint),
-						)
+						cls = ""
+						endpointText = ps.Endpoint
 					}
-					return Span()
+					return Span(
+						Apply(Attr{"class": cls}),
+						Span(Apply(Attr{"class": "text-ink-4"}), Text("from ")),
+						Text(endpointText),
+					)
 				}(),
 				Span(Text(fmt.Sprintf("↓%s  ↑%s", FormatBytes(ps.TransferRx), FormatBytes(ps.TransferTx)))),
 				func() loom.Node {
-					if ps.Connected && ps.ConnectedSince != "" {
+					if ps.Connected {
 						return UptimeSpan(ps.ConnectedSince, "text-green-400/70")
 					}
-					return Span()
+					return UptimeSpan("", "text-green-400/70")
 				}(),
 			),
 			// IP badges row (own row on mobile for tap targets)
