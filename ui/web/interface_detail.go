@@ -21,9 +21,6 @@ var (
 	detailEditPeerID    string
 	detailSetKeyPeerID  string
 	detailPollInterval  js.Value
-	uptimeTickInterval  js.Value
-	uptimeTick          func() int64
-	setUptimeTick       func(int64)
 )
 
 func InterfaceDetailView(ifaceID string) loom.Node {
@@ -53,9 +50,6 @@ func InterfaceDetailView(ifaceID string) loom.Node {
 		}()
 	}
 
-	// 1-second tick signal for live uptime timers
-	uptimeTick, setUptimeTick = Signal[int64](0)
-
 	Effect(func() {
 		loadStatus()
 		// Clear any previous poll interval
@@ -69,16 +63,6 @@ func InterfaceDetailView(ifaceID string) loom.Node {
 			}
 			return nil
 		}), 5000)
-
-		// Clear any previous uptime tick interval
-		if !uptimeTickInterval.IsUndefined() && !uptimeTickInterval.IsNull() {
-			js.Global().Call("clearInterval", uptimeTickInterval)
-		}
-		// Tick every second to update uptime displays
-		uptimeTickInterval = js.Global().Call("setInterval", js.FuncOf(func(this js.Value, args []js.Value) any {
-			setUptimeTick(uptimeTick() + 1)
-			return nil
-		}), 1000)
 	})
 
 	return Div(
@@ -630,11 +614,7 @@ func peerCardList(ifaceID string, peers []peerStatusData) loom.Node {
 				Span(Text(fmt.Sprintf("↓%s  ↑%s", FormatBytes(ps.TransferRx), FormatBytes(ps.TransferTx)))),
 				func() loom.Node {
 					if ps.Connected && ps.ConnectedSince != "" {
-						_ = uptimeTick() // read signal to trigger re-render every second
-						return Span(
-							Apply(Attr{"class": "text-green-400/70"}),
-							Text(FormatDuration(ps.ConnectedSince)),
-						)
+						return UptimeSpan(ps.ConnectedSince, "text-green-400/70")
 					}
 					return Span()
 				}(),

@@ -337,10 +337,7 @@ func activeConnectionRow(conn activeConnectionData) loom.Node {
 							Span(Text(fmt.Sprintf("↓%s ↑%s", FormatBytes(conn.TransferRx), FormatBytes(conn.TransferTx)))),
 							func() loom.Node {
 								if conn.ConnectedSince != "" {
-									return Span(
-										Apply(Attr{"class": "text-green-400/70"}),
-										Text(FormatDuration(conn.ConnectedSince)),
-									)
+									return UptimeSpan(conn.ConnectedSince, "text-green-400/70")
 								}
 								return Span()
 							}(),
@@ -373,10 +370,7 @@ func activeConnectionRow(conn activeConnectionData) loom.Node {
 					),
 					func() loom.Node {
 						if conn.ConnectedSince != "" {
-							return Span(
-								Apply(Attr{"class": "text-xs font-mono text-green-400/70 flex-shrink-0"}),
-								Text(FormatDuration(conn.ConnectedSince)),
-							)
+							return UptimeSpan(conn.ConnectedSince, "text-xs font-mono text-green-400/70 flex-shrink-0")
 						}
 						return Span()
 					}(),

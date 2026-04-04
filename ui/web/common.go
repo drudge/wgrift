@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"syscall/js"
 	"time"
@@ -326,6 +327,60 @@ func FormatDuration(since string) string {
 		d = 0
 	}
 	return FormatSeconds(int64(d.Seconds()))
+}
+
+// parseUnixSince parses an RFC3339 string and returns the Unix timestamp as a string.
+func parseUnixSince(since string) string {
+	t, err := time.Parse(time.RFC3339, since)
+	if err != nil {
+		t, err = time.Parse(time.RFC3339Nano, since)
+		if err != nil {
+			return ""
+		}
+	}
+	return strconv.FormatInt(t.Unix(), 10)
+}
+
+// UptimeSpan renders a span with data-since attribute for the JS-driven uptime timer.
+func UptimeSpan(connectedSince, class string) loom.Node {
+	unix := parseUnixSince(connectedSince)
+	if unix == "" {
+		return Span()
+	}
+	return Span(
+		Apply(Attr{"class": class, "data-since": unix}),
+		Text(FormatDuration(connectedSince)), // initial value, JS takes over
+	)
+}
+
+// initUptimeTimers starts a global JS interval that updates all [data-since] elements every second.
+func initUptimeTimers() {
+	js.Global().Call("eval", `
+(function() {
+	function fmtUptime(s) {
+		if (s < 0) s = 0;
+		var d = Math.floor(s / 86400);
+		var h = Math.floor((s % 86400) / 3600);
+		var m = Math.floor((s % 3600) / 60);
+		var sec = s % 60;
+		if (d > 0) return d + 'd ' + h + 'h';
+		if (h > 0) return h + 'h ' + m + 'm';
+		if (m > 0) return m + 'm ' + sec + 's';
+		return sec + 's';
+	}
+	if (window._uptimeInterval) clearInterval(window._uptimeInterval);
+	window._uptimeInterval = setInterval(function() {
+		var now = Math.floor(Date.now() / 1000);
+		var els = document.querySelectorAll('[data-since]');
+		for (var i = 0; i < els.length; i++) {
+			var since = parseInt(els[i].getAttribute('data-since'), 10);
+			if (!isNaN(since)) {
+				els[i].textContent = fmtUptime(now - since);
+			}
+		}
+	}, 1000);
+})();
+`)
 }
 
 // FormatSeconds formats a duration in seconds as a human-readable string.

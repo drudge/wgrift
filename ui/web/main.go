@@ -21,6 +21,7 @@ func App() loom.Node {
 	initToast()
 	initMobileNav()
 	initRouter()
+	initUptimeTimers()
 
 	// Fade out loading overlay after a tick so the DOM has rendered
 	js.Global().Call("setTimeout", js.FuncOf(func(this js.Value, args []js.Value) any {
