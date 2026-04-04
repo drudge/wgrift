@@ -223,7 +223,7 @@ func interfaceCard(iface interfaceSummaryData) loom.Node {
 						),
 						Div(
 							Apply(Attr{"class": "font-mono text-xs text-ink-3 mt-0.5"}),
-							Text(fmt.Sprintf("%s · :%d", iface.Address, iface.ListenPort)),
+							Text(fmt.Sprintf("%s · %s", iface.Address, formatListenAddr(iface.Endpoint, iface.ListenPort))),
 						),
 						Div(
 							append([]loom.Node{Apply(Attr{"class": "flex items-center gap-4 text-xs font-mono text-ink-2 mt-1.5"})}, statsNodes...)...,
@@ -255,7 +255,7 @@ func interfaceCard(iface interfaceSummaryData) loom.Node {
 						),
 						Div(
 							Apply(Attr{"class": "font-mono text-xs text-ink-3 mt-0.5"}),
-							Text(fmt.Sprintf("%s · :%d", iface.Address, iface.ListenPort)),
+							Text(fmt.Sprintf("%s · %s", iface.Address, formatListenAddr(iface.Endpoint, iface.ListenPort))),
 						),
 					),
 				),

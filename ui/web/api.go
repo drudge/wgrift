@@ -290,6 +290,7 @@ type interfaceSummaryData struct {
 	Type           string `json:"type"`
 	Address        string `json:"address"`
 	ListenPort     int    `json:"listen_port"`
+	Endpoint       string `json:"endpoint,omitempty"`
 	Enabled        bool   `json:"enabled"`
 	Running        bool   `json:"running"`
 	PublicKey      string `json:"public_key"`

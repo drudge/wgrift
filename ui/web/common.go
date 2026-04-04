@@ -276,6 +276,13 @@ func typeSelectorCard(iconName, title, description string, selected bool, onClic
 }
 
 // FormatBytes formats bytes to human-readable.
+func formatListenAddr(endpoint string, port int) string {
+	if endpoint != "" {
+		return fmt.Sprintf("%s:%d", endpoint, port)
+	}
+	return fmt.Sprintf(":%d", port)
+}
+
 func FormatBytes(b int64) string {
 	const (
 		KB = 1024

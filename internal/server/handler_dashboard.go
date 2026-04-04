@@ -10,6 +10,7 @@ type interfaceSummary struct {
 	Type           string `json:"type"`
 	Address        string `json:"address"`
 	ListenPort     int    `json:"listen_port"`
+	Endpoint       string `json:"endpoint,omitempty"`
 	Enabled        bool   `json:"enabled"`
 	Running        bool   `json:"running"`
 	PublicKey      string `json:"public_key"`
@@ -56,6 +57,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			Type:       string(iface.Type),
 			Address:    iface.Address,
 			ListenPort: iface.ListenPort,
+			Endpoint:   iface.Endpoint,
 			Enabled:    iface.Enabled,
 		}
 
