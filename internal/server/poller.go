@@ -37,7 +37,7 @@ type peerSnapshot struct {
 
 // NewPoller creates a connection status poller.
 func NewPoller(mgr *wg.Manager, s store.Store, cfg config.Config) *Poller {
-	interval := 30 * time.Second
+	interval := 10 * time.Second
 	if d, err := time.ParseDuration(cfg.Logging.ConnectionPollInterval); err == nil {
 		interval = d
 	}
