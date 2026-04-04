@@ -12,9 +12,13 @@ A self-hosted WireGuard VPN management platform. Single binary with embedded web
 |:---:|:---:|
 | ![Peer Config](docs/screenshots/peer-config.png) | ![Settings](docs/screenshots/settings.png) |
 
-| Connection Logs | Mobile |
+| Edit Peer & Email Alerts | Connection Logs |
 |:---:|:---:|
-| ![Connection Logs](docs/screenshots/logs.png) | ![Mobile](docs/screenshots/mobile.png) |
+| ![Edit Peer](docs/screenshots/edit-peer.png) | ![Connection Logs](docs/screenshots/logs.png) |
+
+| Login | Mobile |
+|:---:|:---:|
+| ![Login](docs/screenshots/login.png) | ![Mobile](docs/screenshots/mobile.png) |
 
 ## Features
 

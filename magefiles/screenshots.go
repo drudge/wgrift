@@ -196,9 +196,10 @@ func captureScreenshots() error {
 		return fmt.Errorf("logs screenshot: %w", err)
 	}
 
-	// 8. Settings
+	// 8. Settings — use a tall viewport so SMTP + OIDC sections are both visible
 	log.Println("Capturing settings page...")
 	if err := chromedp.Run(ctx,
+		emulation.SetDeviceMetricsOverride(1440, 1400, 1, false),
 		chromedp.Navigate(baseURL+"/settings"),
 		chromedp.Sleep(wasmLoadWait),
 	); err != nil {
@@ -207,8 +208,31 @@ func captureScreenshots() error {
 	if err := screenshotCurrent(ctx, "settings.png"); err != nil {
 		return fmt.Errorf("settings screenshot: %w", err)
 	}
+	// Reset viewport back to default
+	if err := chromedp.Run(ctx,
+		emulation.SetDeviceMetricsOverride(1440, 900, 1, false),
+	); err != nil {
+		return fmt.Errorf("resetting viewport: %w", err)
+	}
 
-	// 9. Mobile view
+	// 9. Edit peer — click edit on first peer to show email alerts section
+	log.Println("Capturing edit peer form...")
+	if err := chromedp.Run(ctx,
+		// Use a tall viewport so the full edit form including email alerts is visible
+		emulation.SetDeviceMetricsOverride(1440, 1600, 1, false),
+		chromedp.Navigate(baseURL+"/interfaces/wg0"),
+		chromedp.Sleep(wasmLoadWait),
+		// Click the first "Edit peer" pencil button
+		chromedp.Evaluate(`document.querySelector('button[title="Edit peer"]').click()`, nil),
+		chromedp.Sleep(wasmLoadWait),
+	); err != nil {
+		return fmt.Errorf("edit peer: %w", err)
+	}
+	if err := screenshotCurrent(ctx, "edit-peer.png"); err != nil {
+		return fmt.Errorf("edit peer screenshot: %w", err)
+	}
+
+	// 10. Mobile view
 	log.Println("Capturing mobile view...")
 	if err := chromedp.Run(ctx,
 		emulation.SetDeviceMetricsOverride(390, 844, 2, true),
