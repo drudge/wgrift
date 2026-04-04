@@ -38,7 +38,67 @@ func SeedDemoData(s store.Store, enc *crypto.Encryptor) error {
 		return fmt.Errorf("seeding Vandelay sites: %w", err)
 	}
 
+	if err := seedDemoSettings(s, enc); err != nil {
+		return fmt.Errorf("seeding demo settings: %w", err)
+	}
+
 	log.Println("demo: seed complete — login with admin / admin")
+	return nil
+}
+
+// seedDemoSettings populates SMTP, OIDC, and external URL so the settings
+// page and email-related UI elements look realistic in screenshots.
+func seedDemoSettings(s store.Store, enc *crypto.Encryptor) error {
+	// External URL
+	if err := s.SetSetting("external_url", "https://vpn.vandelay.io"); err != nil {
+		return err
+	}
+
+	// Fake SMTP config (Vandelay Industries mail server)
+	if err := s.SetSetting("smtp_host", "smtp.vandelay.io"); err != nil {
+		return err
+	}
+	if err := s.SetSetting("smtp_port", "587"); err != nil {
+		return err
+	}
+	if err := s.SetSetting("smtp_from", "vpn@vandelay.io"); err != nil {
+		return err
+	}
+	if err := s.SetSetting("smtp_username", "vpn@vandelay.io"); err != nil {
+		return err
+	}
+	encPw, err := enc.Encrypt("demo-smtp-password")
+	if err != nil {
+		return err
+	}
+	if err := s.SetSetting("smtp_password_encrypted", encPw); err != nil {
+		return err
+	}
+	if err := s.SetSetting("smtp_tls", "starttls"); err != nil {
+		return err
+	}
+
+	// Fake OIDC provider (Okta-style)
+	encSecret, err := enc.Encrypt("demo-client-secret")
+	if err != nil {
+		return err
+	}
+	provider := &models.OIDCProvider{
+		Name:                  "Okta",
+		Issuer:                "https://vandelay.okta.com",
+		ClientID:              "0oa1b2c3d4e5f6g7h8i9",
+		ClientSecretEncrypted: encSecret,
+		Scopes:                "openid profile email groups",
+		AutoDiscover:          true,
+		AdminClaim:            "groups",
+		AdminValue:            "vpn-admins",
+		DefaultRole:           "viewer",
+		Enabled:               true,
+	}
+	if err := s.CreateOIDCProvider(provider); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -75,6 +135,10 @@ type demoPeerDef struct {
 	// simulation hints
 	connected bool   // initial state the mock client should match
 	endpoint  string // static endpoint for history
+	// email alerts
+	alertEmails       string
+	alertOnConnect    bool
+	alertOnDisconnect bool
 }
 
 // seedVandelayVPN creates the client-access VPN with realistic usage:
@@ -113,16 +177,22 @@ func seedVandelayVPN(s store.Store, enc *crypto.Encryptor) error {
 
 	peers := []demoPeerDef{
 		// George — at the office, MacBook on VPN, iPhone not needed
-		{"george-macbook", "10.200.0.2/32", "0.0.0.0/0, ::/0", true, true, true, "73.42.118.205"},
-		{"george-iphone", "10.200.0.3/32", "0.0.0.0/0, ::/0", true, true, false, "73.42.118.205"},
+		{"george-macbook", "10.200.0.2/32", "0.0.0.0/0, ::/0", true, true, true, "73.42.118.205",
+			"george@vandelay.io", true, true},
+		{"george-iphone", "10.200.0.3/32", "0.0.0.0/0, ::/0", true, true, false, "73.42.118.205",
+			"", false, false},
 		// Jerry — working from home, MacBook connected
-		{"jerry-macbook", "10.200.0.4/32", "0.0.0.0/0, ::/0", true, true, true, "98.207.45.12"},
+		{"jerry-macbook", "10.200.0.4/32", "0.0.0.0/0, ::/0", true, true, true, "98.207.45.12",
+			"", false, false},
 		// Elaine — out at a meeting, laptop closed
-		{"elaine-macbook", "10.200.0.5/32", "0.0.0.0/0, ::/0", true, true, false, "174.63.221.88"},
+		{"elaine-macbook", "10.200.0.5/32", "0.0.0.0/0, ::/0", true, true, false, "174.63.221.88",
+			"elaine@vandelay.io", false, true},
 		// Kramer — just connected from home
-		{"kramer-macbook", "10.200.0.6/32", "0.0.0.0/0, ::/0", true, false, true, "24.185.93.140"},
+		{"kramer-macbook", "10.200.0.6/32", "0.0.0.0/0, ::/0", true, false, true, "24.185.93.140",
+			"", false, false},
 		// Newman — terminated, account disabled
-		{"newman-desktop", "10.200.0.7/32", "0.0.0.0/0, ::/0", false, false, false, ""},
+		{"newman-desktop", "10.200.0.7/32", "0.0.0.0/0, ::/0", false, false, false, "",
+			"", false, false},
 	}
 
 	for _, p := range peers {
@@ -172,12 +242,16 @@ func seedVandelaySites(s store.Store, enc *crypto.Encryptor) error {
 	}
 
 	peers := []demoPeerDef{
-		// Permanent sites — always connected
-		{"warehouse-nj", "10.100.0.2/32", "10.100.0.2/32, 192.168.10.0/24", true, true, true, "203.45.167.22"},
-		{"office-manhattan", "10.100.0.3/32", "10.100.0.3/32, 192.168.20.0/24", true, true, true, "68.132.91.44"},
+		// Permanent sites — always connected, alert ops on disconnect
+		{"warehouse-nj", "10.100.0.2/32", "10.100.0.2/32, 192.168.10.0/24", true, true, true, "203.45.167.22",
+			"ops@vandelay.io", false, true},
+		{"office-manhattan", "10.100.0.3/32", "10.100.0.3/32, 192.168.20.0/24", true, true, true, "68.132.91.44",
+			"ops@vandelay.io", false, true},
 		// Home offices
-		{"george-home", "10.100.0.4/32", "10.100.0.4/32, 192.168.30.0/24", true, true, true, "73.42.118.205"},
-		{"kramer-home", "10.100.0.5/32", "10.100.0.5/32, 192.168.40.0/24", true, true, false, "24.185.93.140"},
+		{"george-home", "10.100.0.4/32", "10.100.0.4/32, 192.168.30.0/24", true, true, true, "73.42.118.205",
+			"", false, false},
+		{"kramer-home", "10.100.0.5/32", "10.100.0.5/32, 192.168.40.0/24", true, true, false, "24.185.93.140",
+			"", false, false},
 	}
 
 	for _, p := range peers {
@@ -214,6 +288,9 @@ func createDemoPeer(s store.Store, enc *crypto.Encryptor, ifaceID string, peerTy
 		AllowedIPs:          def.address,
 		ClientAllowedIPs:    def.clientAllowedIPs,
 		Enabled:             def.enabled,
+		AlertEmails:         def.alertEmails,
+		AlertOnConnect:      def.alertOnConnect,
+		AlertOnDisconnect:   def.alertOnDisconnect,
 	}
 
 	if def.psk {
