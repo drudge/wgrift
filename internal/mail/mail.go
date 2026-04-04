@@ -42,6 +42,7 @@ type AlertEmail struct {
 	Endpoint      string
 	TransferRx    int64
 	TransferTx    int64
+	Duration      string // formatted duration for disconnect events
 	Timestamp     string
 	ServerName    string // for branding
 }

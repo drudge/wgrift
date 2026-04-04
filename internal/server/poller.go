@@ -23,7 +23,7 @@ type Poller struct {
 	lastState map[string]peerSnapshot
 	notify    chan struct{}
 
-	alertFn       func(peer models.Peer, iface models.Interface, event, endpoint string)
+	alertFn       func(peer models.Peer, iface models.Interface, event, endpoint string, duration time.Duration)
 	seedConnected map[string]time.Time // temporary, set only during initial seed
 }
 
@@ -180,7 +180,11 @@ func (p *Poller) poll() {
 						peer.TransferRx = current.TransferRx
 						peer.TransferTx = current.TransferTx
 						ifaceCopy := iface
-						go p.alertFn(peer, ifaceCopy, event, current.Endpoint)
+						var dur time.Duration
+						if event == "disconnected" && !prev.ConnectedSince.IsZero() {
+							dur = time.Since(prev.ConnectedSince)
+						}
+						go p.alertFn(peer, ifaceCopy, event, current.Endpoint, dur)
 					}
 				}
 			}
