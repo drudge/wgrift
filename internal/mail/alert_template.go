@@ -29,7 +29,7 @@ table {border-collapse:collapse;}
 <style>
 :root { color-scheme: light dark; }
 body, .body-bg { background-color: transparent !important; }
-.card-bg { background-color: #ffffff !important; }
+.card-bg { background-color: transparent !important; }
 .card-border { border: 1px solid #e5e5ea !important; }
 .header-border { border-bottom: 1px solid #e5e5ea !important; }
 .footer-border { border-top: 1px solid #e5e5ea !important; }
@@ -37,7 +37,7 @@ body, .body-bg { background-color: transparent !important; }
 .sub-text { color: #8e8e93 !important; }
 .body-text { color: #3a3a3c !important; }
 .muted-text { color: #8e8e93 !important; }
-.detail-bg { background-color: #f2f2f7 !important; }
+.detail-bg { background-color: transparent !important; }
 .detail-border { border: 1px solid #e5e5ea !important; }
 .detail-label { color: #8e8e93 !important; }
 .detail-value { color: #3a3a3c !important; }
@@ -50,7 +50,7 @@ body, .body-bg { background-color: transparent !important; }
 
 @media (prefers-color-scheme: dark) {
   body, .body-bg { background-color: transparent !important; }
-  .card-bg { background-color: #161620 !important; }
+  .card-bg { background-color: transparent !important; }
   .card-border { border: 1px solid #2c2c34 !important; }
   .header-border { border-bottom: 1px solid #2c2c34 !important; }
   .footer-border { border-top: 1px solid #2c2c34 !important; }
@@ -58,7 +58,7 @@ body, .body-bg { background-color: transparent !important; }
   .sub-text { color: #8888a0 !important; }
   .body-text { color: #b4b4c8 !important; }
   .muted-text { color: #8888a0 !important; }
-  .detail-bg { background-color: #1e1e2a !important; }
+  .detail-bg { background-color: transparent !important; }
   .detail-border { border: 1px solid #2c2c34 !important; }
   .detail-label { color: #8888a0 !important; }
   .detail-value { color: #b4b4c8 !important; }
@@ -76,7 +76,7 @@ body, .body-bg { background-color: transparent !important; }
 <tr><td align="center" style="padding:32px 16px;">
 
 <!--[if mso]><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560"><tr><td><![endif]-->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="card-bg card-border" style="background-color:#ffffff;border:1px solid #e5e5ea;border-radius:12px;max-width:560px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="card-bg card-border" style="background-color:transparent;border:1px solid #e5e5ea;border-radius:12px;max-width:560px;">
 
 <!-- Header -->
 <tr><td class="header-border" style="padding:28px 32px 20px;border-bottom:1px solid #e5e5ea;">
@@ -95,7 +95,7 @@ body, .body-bg { background-color: transparent !important; }
 
 <!-- Details -->
 <tr><td style="padding:20px 32px 24px;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="detail-bg detail-border" style="background-color:#f2f2f7;border:1px solid #e5e5ea;border-radius:8px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="detail-bg detail-border" style="background-color:transparent;border:1px solid #e5e5ea;border-radius:8px;">
   {{if .Endpoint}}
   <tr><td style="padding:12px 16px 0;">
     <span class="detail-label" style="font-size:11px;font-weight:600;color:#8e8e93;text-transform:uppercase;letter-spacing:1px;">Endpoint</span><br>

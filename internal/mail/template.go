@@ -28,8 +28,8 @@ table {border-collapse:collapse;}
 <![endif]-->
 <style>
 :root { color-scheme: light dark; }
-body, .body-bg { background-color: #f2f2f7 !important; }
-.card-bg { background-color: #ffffff !important; }
+body, .body-bg { background-color: transparent !important; }
+.card-bg { background-color: transparent !important; }
 .card-border { border: 1px solid #e5e5ea !important; }
 .header-border { border-bottom: 1px solid #e5e5ea !important; }
 .footer-border { border-top: 1px solid #e5e5ea !important; }
@@ -38,13 +38,13 @@ body, .body-bg { background-color: #f2f2f7 !important; }
 .sub-text { color: #8e8e93 !important; }
 .body-text { color: #3a3a3c !important; }
 .muted-text { color: #8e8e93 !important; }
-.note-bg { background-color: #f2f2f7 !important; }
+.note-bg { background-color: transparent !important; }
 .note-border { border: 1px solid #e5e5ea !important; }
 .note-text { color: #3a3a3c !important; }
 .step-bg { background-color: #fee2e2 !important; }
 .step-text { color: #dc2626 !important; }
 .link { color: #dc2626 !important; }
-.attach-bg { background-color: #f2f2f7 !important; }
+.attach-bg { background-color: transparent !important; }
 .attach-border { border: 1px solid #e5e5ea !important; }
 .attach-text { color: #8e8e93 !important; }
 .attach-name { color: #3a3a3c !important; }
@@ -52,8 +52,8 @@ body, .body-bg { background-color: #f2f2f7 !important; }
 .footer-link { color: #aeaeb2 !important; }
 
 @media (prefers-color-scheme: dark) {
-  body, .body-bg { background-color: #0c0c10 !important; }
-  .card-bg { background-color: #161620 !important; }
+  body, .body-bg { background-color: transparent !important; }
+  .card-bg { background-color: transparent !important; }
   .card-border { border: 1px solid #2c2c34 !important; }
   .header-border { border-bottom: 1px solid #2c2c34 !important; }
   .footer-border { border-top: 1px solid #2c2c34 !important; }
@@ -62,13 +62,13 @@ body, .body-bg { background-color: #f2f2f7 !important; }
   .sub-text { color: #8888a0 !important; }
   .body-text { color: #b4b4c8 !important; }
   .muted-text { color: #8888a0 !important; }
-  .note-bg { background-color: #1e1e2a !important; }
+  .note-bg { background-color: transparent !important; }
   .note-border { border: 1px solid #2c2c34 !important; }
   .note-text { color: #b4b4c8 !important; }
   .step-bg { background-color: #3b1114 !important; }
   .step-text { color: #f87171 !important; }
   .link { color: #f87171 !important; }
-  .attach-bg { background-color: #1e1e2a !important; }
+  .attach-bg { background-color: transparent !important; }
   .attach-border { border: 1px solid #2c2c34 !important; }
   .attach-text { color: #8888a0 !important; }
   .attach-name { color: #b4b4c8 !important; }
@@ -77,12 +77,12 @@ body, .body-bg { background-color: #f2f2f7 !important; }
 }
 </style>
 </head>
-<body class="body-bg" style="margin:0;padding:0;background-color:#f2f2f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="body-bg" style="background-color:#f2f2f7;">
+<body class="body-bg" style="margin:0;padding:0;background-color:transparent;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="body-bg" style="background-color:transparent;">
 <tr><td align="center" style="padding:32px 16px;">
 
 <!--[if mso]><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560"><tr><td><![endif]-->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="card-bg card-border" style="background-color:#ffffff;border:1px solid #e5e5ea;border-radius:12px;max-width:560px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="card-bg card-border" style="background-color:transparent;border:1px solid #e5e5ea;border-radius:12px;max-width:560px;">
 
 <!-- Header -->
 <tr><td class="header-border" style="padding:28px 32px 20px;border-bottom:1px solid #e5e5ea;">
@@ -93,7 +93,7 @@ body, .body-bg { background-color: #f2f2f7 !important; }
 {{if .Note}}
 <!-- Custom Note -->
 <tr><td style="padding:24px 32px 0;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="note-bg note-border" style="background-color:#f2f2f7;border:1px solid #e5e5ea;border-radius:8px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="note-bg note-border" style="background-color:transparent;border:1px solid #e5e5ea;border-radius:8px;">
   <tr><td style="padding:16px 20px;">
     <span class="note-text" style="font-size:13px;color:#3a3a3c;white-space:pre-wrap;line-height:1.5;">{{.Note}}</span>
   </td></tr>
@@ -160,7 +160,7 @@ body, .body-bg { background-color: #f2f2f7 !important; }
 
 <!-- Attachment note -->
 <tr><td style="padding:0 32px 24px;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="attach-bg attach-border" style="background-color:#f2f2f7;border:1px solid #e5e5ea;border-radius:8px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="attach-bg attach-border" style="background-color:transparent;border:1px solid #e5e5ea;border-radius:8px;">
   <tr><td style="padding:12px 16px;">
     <span class="attach-text" style="font-size:12px;color:#8e8e93;">📎 The configuration file <strong class="attach-name" style="color:#3a3a3c;">{{.Filename}}</strong> is attached to this email.</span>
   </td></tr>
