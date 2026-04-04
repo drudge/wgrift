@@ -147,9 +147,9 @@ func (s *SQLiteStore) DeleteOIDCProvider(id string) error {
 func (s *SQLiteStore) CreateOIDCState(state *models.OIDCState) error {
 	state.CreatedAt = time.Now().UTC()
 	_, err := s.db.Exec(`
-		INSERT INTO oidc_states (state, provider_id, nonce, created_at)
-		VALUES (?, ?, ?, ?)`,
-		state.State, state.ProviderID, state.Nonce, state.CreatedAt,
+		INSERT INTO oidc_states (state, provider_id, nonce, redirect_url, created_at)
+		VALUES (?, ?, ?, ?, ?)`,
+		state.State, state.ProviderID, state.Nonce, state.RedirectURL, state.CreatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("inserting OIDC state: %w", err)
@@ -160,9 +160,9 @@ func (s *SQLiteStore) CreateOIDCState(state *models.OIDCState) error {
 func (s *SQLiteStore) GetOIDCState(state string) (*models.OIDCState, error) {
 	s2 := &models.OIDCState{}
 	err := s.db.QueryRow(`
-		SELECT state, provider_id, nonce, created_at
+		SELECT state, provider_id, nonce, redirect_url, created_at
 		FROM oidc_states WHERE state = ?`, state,
-	).Scan(&s2.State, &s2.ProviderID, &s2.Nonce, &s2.CreatedAt)
+	).Scan(&s2.State, &s2.ProviderID, &s2.Nonce, &s2.RedirectURL, &s2.CreatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}

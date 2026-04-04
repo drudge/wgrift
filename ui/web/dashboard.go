@@ -326,21 +326,20 @@ func activeConnectionRow(conn activeConnectionData) loom.Node {
 							Apply(Attr{"class": "flex items-center gap-4 font-mono text-xs text-ink-3 mt-0.5"}),
 							Span(Apply(Attr{"class": "text-ink-2"}), Text(conn.Address)),
 							func() loom.Node {
+								cls := "hidden"
+								epText := ""
 								if conn.Endpoint != "" {
-									return Span(
-										Span(Apply(Attr{"class": "text-ink-4"}), Text("from ")),
-										Text(conn.Endpoint),
-									)
+									cls = ""
+									epText = conn.Endpoint
 								}
-								return Span()
+								return Span(
+									Apply(Attr{"class": cls}),
+									Span(Apply(Attr{"class": "text-ink-4"}), Text("from ")),
+									Text(epText),
+								)
 							}(),
 							Span(Text(fmt.Sprintf("↓%s ↑%s", FormatBytes(conn.TransferRx), FormatBytes(conn.TransferTx)))),
-							func() loom.Node {
-								if conn.ConnectedSince != "" {
-									return UptimeSpan(conn.ConnectedSince, "text-green-400/70")
-								}
-								return Span()
-							}(),
+							UptimeSpan(conn.ConnectedSince, "text-green-400/70"),
 						),
 					),
 				),
@@ -368,20 +367,16 @@ func activeConnectionRow(conn activeConnectionData) loom.Node {
 							Text(conn.Address),
 						),
 					),
-					func() loom.Node {
-						if conn.ConnectedSince != "" {
-							return UptimeSpan(conn.ConnectedSince, "text-xs font-mono text-green-400/70 flex-shrink-0")
-						}
-						return Span()
-					}(),
+					UptimeSpan(conn.ConnectedSince, "text-xs font-mono text-green-400/70 flex-shrink-0"),
 				),
 				Div(
 					Apply(Attr{"class": "flex items-center gap-3 text-xs font-mono text-ink-3 mt-2 pl-5"}),
 					func() loom.Node {
-						if conn.Endpoint != "" {
-							return Span(Text(conn.Endpoint))
+						cls := ""
+						if conn.Endpoint == "" {
+							cls = "hidden"
 						}
-						return Span()
+						return Span(Apply(Attr{"class": cls}), Text(conn.Endpoint))
 					}(),
 					Span(Text(fmt.Sprintf("↓%s ↑%s", FormatBytes(conn.TransferRx), FormatBytes(conn.TransferTx)))),
 				),

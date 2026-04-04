@@ -124,7 +124,7 @@ func (s *OIDCService) ListProviders() []models.OIDCProvider {
 }
 
 // AuthorizationURL generates an OIDC authorization URL for the given provider.
-func (s *OIDCService) AuthorizationURL(providerID, externalURL string) (string, error) {
+func (s *OIDCService) AuthorizationURL(providerID, externalURL, redirectURL string) (string, error) {
 	s.mu.RLock()
 	p, ok := s.providers[providerID]
 	s.mu.RUnlock()
@@ -145,9 +145,10 @@ func (s *OIDCService) AuthorizationURL(providerID, externalURL string) (string, 
 	nonce := hex.EncodeToString(nonceBytes)
 
 	if err := s.store.CreateOIDCState(&models.OIDCState{
-		State:      state,
-		ProviderID: providerID,
-		Nonce:      nonce,
+		State:       state,
+		ProviderID:  providerID,
+		Nonce:       nonce,
+		RedirectURL: redirectURL,
 	}); err != nil {
 		return "", fmt.Errorf("storing OIDC state: %w", err)
 	}
@@ -160,27 +161,29 @@ func (s *OIDCService) AuthorizationURL(providerID, externalURL string) (string, 
 }
 
 // HandleCallback processes an OIDC callback, returning the authenticated user.
-func (s *OIDCService) HandleCallback(ctx context.Context, code, stateParam, externalURL string) (*models.User, error) {
+func (s *OIDCService) HandleCallback(ctx context.Context, code, stateParam, externalURL string) (*models.User, string, error) {
 	// Look up and consume the state (single-use)
 	oidcState, err := s.store.GetOIDCState(stateParam)
 	if err != nil {
-		return nil, fmt.Errorf("looking up OIDC state: %w", err)
+		return nil, "", fmt.Errorf("looking up OIDC state: %w", err)
 	}
 	if oidcState == nil {
-		return nil, fmt.Errorf("invalid or expired OIDC state")
+		return nil, "", fmt.Errorf("invalid or expired OIDC state")
 	}
 	s.store.DeleteOIDCState(stateParam)
 
 	// Check TTL (10 minutes)
 	if time.Since(oidcState.CreatedAt) > 10*time.Minute {
-		return nil, fmt.Errorf("OIDC state expired")
+		return nil, "", fmt.Errorf("OIDC state expired")
 	}
+
+	redirectURL := oidcState.RedirectURL
 
 	s.mu.RLock()
 	p, ok := s.providers[oidcState.ProviderID]
 	s.mu.RUnlock()
 	if !ok {
-		return nil, fmt.Errorf("OIDC provider no longer available")
+		return nil, "", fmt.Errorf("OIDC provider no longer available")
 	}
 
 	// Exchange code for tokens
@@ -189,23 +192,23 @@ func (s *OIDCService) HandleCallback(ctx context.Context, code, stateParam, exte
 
 	token, err := cfg.Exchange(ctx, code)
 	if err != nil {
-		return nil, fmt.Errorf("exchanging code: %w", err)
+		return nil, "", fmt.Errorf("exchanging code: %w", err)
 	}
 
 	// Extract and verify ID token
 	rawIDToken, ok := token.Extra("id_token").(string)
 	if !ok {
-		return nil, fmt.Errorf("no id_token in response")
+		return nil, "", fmt.Errorf("no id_token in response")
 	}
 
 	idToken, err := p.verifier.Verify(ctx, rawIDToken)
 	if err != nil {
-		return nil, fmt.Errorf("verifying id_token: %w", err)
+		return nil, "", fmt.Errorf("verifying id_token: %w", err)
 	}
 
 	// Verify nonce
 	if idToken.Nonce != oidcState.Nonce {
-		return nil, fmt.Errorf("nonce mismatch")
+		return nil, "", fmt.Errorf("nonce mismatch")
 	}
 
 	// Extract claims
@@ -216,7 +219,7 @@ func (s *OIDCService) HandleCallback(ctx context.Context, code, stateParam, exte
 		Name              string `json:"name"`
 	}
 	if err := idToken.Claims(&claims); err != nil {
-		return nil, fmt.Errorf("extracting claims: %w", err)
+		return nil, "", fmt.Errorf("extracting claims: %w", err)
 	}
 
 	// Check admin claim if configured
@@ -236,7 +239,7 @@ func (s *OIDCService) HandleCallback(ctx context.Context, code, stateParam, exte
 	// Find existing user by OIDC identity
 	user, err := s.store.GetUserByOIDCIdentity(p.model.Name, claims.Subject)
 	if err != nil {
-		return nil, fmt.Errorf("looking up OIDC user: %w", err)
+		return nil, "", fmt.Errorf("looking up OIDC user: %w", err)
 	}
 
 	if user != nil {
@@ -253,7 +256,7 @@ func (s *OIDCService) HandleCallback(ctx context.Context, code, stateParam, exte
 		if changed {
 			s.store.UpdateUser(user)
 		}
-		return user, nil
+		return user, redirectURL, nil
 	}
 
 	// JIT provision new user
@@ -287,10 +290,10 @@ func (s *OIDCService) HandleCallback(ctx context.Context, code, stateParam, exte
 	}
 
 	if err := s.store.CreateUser(user); err != nil {
-		return nil, fmt.Errorf("creating OIDC user: %w", err)
+		return nil, "", fmt.Errorf("creating OIDC user: %w", err)
 	}
 
-	return user, nil
+	return user, redirectURL, nil
 }
 
 // CleanExpiredStates removes OIDC states older than 10 minutes.

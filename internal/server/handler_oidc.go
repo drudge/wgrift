@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -27,7 +28,9 @@ func (s *Server) handleOIDCLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	url, err := s.oidc.AuthorizationURL(providerID, s.externalURL(r))
+	redirectURL := sanitizeRedirectURL(r.URL.Query().Get("redirect"))
+
+	url, err := s.oidc.AuthorizationURL(providerID, s.externalURL(r), redirectURL)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
@@ -57,7 +60,7 @@ func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := s.oidc.HandleCallback(r.Context(), code, state, s.externalURL(r))
+	user, redirectURL, err := s.oidc.HandleCallback(r.Context(), code, state, s.externalURL(r))
 	if err != nil {
 		log.Printf("OIDC callback failed: %v", err)
 		http.Redirect(w, r, "/?error=auth_failed", http.StatusFound)
@@ -83,5 +86,18 @@ func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   int(24 * time.Hour / time.Second),
 	})
 
-	http.Redirect(w, r, "/", http.StatusFound)
+	dest := sanitizeRedirectURL(redirectURL)
+	if dest == "" {
+		dest = "/"
+	}
+	http.Redirect(w, r, dest, http.StatusFound)
+}
+
+// sanitizeRedirectURL validates a redirect URL to prevent open redirects.
+// Returns the URL if safe, or empty string if invalid.
+func sanitizeRedirectURL(u string) string {
+	if u == "" || !strings.HasPrefix(u, "/") || strings.HasPrefix(u, "//") {
+		return ""
+	}
+	return u
 }
