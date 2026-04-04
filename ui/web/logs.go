@@ -105,7 +105,14 @@ func LogsView(initialIfaceID string) loom.Node {
 	})
 
 	return Div(
-		PageHeader("Connection Logs", "Real-time connection activity", ifaceSelector),
+		Div(
+			Apply(Attr{"class": "flex items-end justify-between gap-4 mb-8"}),
+			Div(
+				H2(Apply(Attr{"class": "text-2xl font-bold text-ink-1 tracking-tight"}), Text("Connection Logs")),
+				P(Apply(Attr{"class": "text-sm text-ink-3 mt-1 hidden sm:block"}), Text("Real-time connection activity")),
+			),
+			ifaceSelector,
+		),
 
 		LoadingView(loading),
 		Show(func() bool { return !loading() }, func() loom.Node {
