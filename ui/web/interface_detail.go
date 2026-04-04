@@ -596,7 +596,7 @@ func peerCardList(ifaceID string, peers []peerStatusData) loom.Node {
 
 		cardChildren := []loom.Node{
 			Apply(Attr{"class": "bg-surface-1 border border-line-1 rounded-lg px-6 py-4 hover:bg-surface-2/60 transition-colors"}),
-			// Top row: status + name/key + uptime (mobile) + actions
+			// Top row: status + name/key + actions
 			Div(
 				Apply(Attr{"class": "flex items-center justify-between"}),
 				Div(
@@ -612,21 +612,7 @@ func peerCardList(ifaceID string, peers []peerStatusData) loom.Node {
 						copyableKey(ps.Peer.PublicKey),
 					),
 				),
-				Div(
-					Apply(Attr{"class": "flex items-center gap-2"}),
-					// Uptime timer — mobile only (upper right)
-					func() loom.Node {
-						if ps.Connected && ps.ConnectedSince != "" {
-							_ = uptimeTick()
-							return Span(
-								Apply(Attr{"class": "sm:hidden text-xs font-mono text-green-400/70"}),
-								Text(FormatDuration(ps.ConnectedSince)),
-							)
-						}
-						return Span()
-					}(),
-					peerActions(ifaceID, ps),
-				),
+				peerActions(ifaceID, ps),
 			),
 			// Bottom row: address + endpoint + transfer
 			Div(
@@ -646,7 +632,7 @@ func peerCardList(ifaceID string, peers []peerStatusData) loom.Node {
 					if ps.Connected && ps.ConnectedSince != "" {
 						_ = uptimeTick() // read signal to trigger re-render every second
 						return Span(
-							Apply(Attr{"class": "hidden sm:inline text-green-400/70"}),
+							Apply(Attr{"class": "text-green-400/70"}),
 							Text(FormatDuration(ps.ConnectedSince)),
 						)
 					}
