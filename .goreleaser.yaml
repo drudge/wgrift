@@ -30,11 +30,11 @@ archives:
     name_template: "{{ .ProjectName }}-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
     files:
       - src: deploy/wgrift.service
-        dst: .
+        strip_parent: true
       - src: deploy/config.yaml
-        dst: .
+        strip_parent: true
       - src: deploy/install.sh
-        dst: .
+        strip_parent: true
 
 checksum:
   name_template: "checksums.txt"
