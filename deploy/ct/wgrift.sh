@@ -56,7 +56,7 @@ check_pve() {
 }
 
 get_latest_release() {
-  curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/'
+  curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/' || true
 }
 
 get_next_ctid() {
@@ -95,7 +95,7 @@ fi
 msg_info "Checking latest release..."
 VERSION=$(get_latest_release)
 if [[ -z "$VERSION" ]]; then
-  msg_error "Could not determine latest release. Check https://github.com/${REPO}/releases"
+  msg_error "Could not determine latest release. No releases may exist yet. Check https://github.com/${REPO}/releases"
 fi
 msg_ok "Latest version: ${VERSION}"
 
