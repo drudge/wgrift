@@ -165,6 +165,9 @@ pct start "$CTID"
 sleep 3
 msg_ok "Container started"
 
+# Strip 'v' prefix for archive name (tag is v0.1.0, archive uses 0.1.0)
+ARCHIVE_VERSION="${VERSION#v}"
+
 # Install inside container
 msg_info "Installing wgRift ${VERSION}..."
 
@@ -181,9 +184,9 @@ pct exec "$CTID" -- bash -c "
 
   # Download release
   cd /tmp
-  curl -fsSL 'https://github.com/${REPO}/releases/download/${VERSION}/wgrift-${VERSION}-${ARCH_SUFFIX}.tar.gz' -o wgrift.tar.gz
+  mkdir -p wgrift-install && cd wgrift-install
+  curl -fsSL 'https://github.com/${REPO}/releases/download/${VERSION}/wgrift-${ARCHIVE_VERSION}-${ARCH_SUFFIX}.tar.gz' -o wgrift.tar.gz
   tar xzf wgrift.tar.gz
-  cd wgrift-${VERSION}-${ARCH_SUFFIX}
 
   # Install binary
   cp wgrift /usr/local/bin/wgrift
@@ -205,7 +208,7 @@ pct exec "$CTID" -- bash -c "
   systemctl start wgrift
 
   # Cleanup
-  rm -rf /tmp/wgrift*
+  rm -rf /tmp/wgrift-install
 "
 msg_ok "wgRift installed"
 
