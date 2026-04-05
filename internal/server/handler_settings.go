@@ -408,7 +408,7 @@ func (s *Server) handleTestSMTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := mail.SendTestEmail(*smtp, req.To); err != nil {
+	if err := mail.SendTestEmail(*smtp, req.To, s.externalURL(r)); err != nil {
 		writeError(w, http.StatusInternalServerError, "SMTP test failed: "+err.Error())
 		return
 	}

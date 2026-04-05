@@ -50,6 +50,8 @@ func MobileTopBar() loom.Node {
 func MobileNavOverlay() loom.Node {
 	return Bind(func() loom.Node {
 		open := mobileNavOpen()
+		route := currentRoute()
+
 		backdropClass := "md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
 		drawerClass := "fixed top-0 left-0 bottom-0 z-50 w-64 bg-surface-1 border-r border-line-1 transform transition-transform"
 		if !open {
@@ -63,13 +65,13 @@ func MobileNavOverlay() loom.Node {
 			),
 			Elem("nav",
 				Apply(Attr{"class": drawerClass}),
-				mobileNavContent(),
+				mobileNavContent(route),
 			),
 		)
 	})
 }
 
-func mobileNavContent() loom.Node {
+func mobileNavContent(route string) loom.Node {
 	return Div(
 		Apply(Attr{"class": "flex flex-col h-full"}),
 		// Header
@@ -95,15 +97,15 @@ func mobileNavContent() loom.Node {
 			Apply(Attr{"class": "flex-1 px-2 py-3"}),
 			Div(
 				Apply(Attr{"class": "space-y-0.5"}),
-				mobileNavItem("/", "Status", "activity"),
-				mobileNavItem("/interfaces", "Interfaces", "chevrons-left-right-ellipsis"),
-				mobileNavItem("/logs", "Logs", "scroll-text"),
+				mobileNavItem("/", "Status", "activity", route),
+				mobileNavItem("/interfaces", "Interfaces", "chevrons-left-right-ellipsis", route),
+				mobileNavItem("/logs", "Logs", "scroll-text", route),
 			),
 			Div(Apply(Attr{"class": "h-px bg-line-1 mx-3 my-4"})),
 			Div(
 				Div(Apply(Attr{"class": "px-3 mb-2 text-[10px] font-semibold text-ink-3 uppercase tracking-[0.15em]"}), Text("Admin")),
-				mobileNavItem("/users", "Users", "users"),
-				mobileNavItem("/settings", "Settings", "settings"),
+				mobileNavItem("/users", "Users", "users", route),
+				mobileNavItem("/settings", "Settings", "settings", route),
 			),
 		),
 		// User section
@@ -142,28 +144,25 @@ func mobileNavContent() loom.Node {
 	)
 }
 
-func mobileNavItem(href, label string, iconName string) loom.Node {
-	return Bind(func() loom.Node {
-		route := currentRoute()
-		active := route == href || (href != "/" && strings.HasPrefix(route, href))
+func mobileNavItem(href, label, iconName, route string) loom.Node {
+	active := route == href || (href != "/" && strings.HasPrefix(route, href))
 
-		class := "w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-100 "
-		if active {
-			class += "bg-wg-600/10 border border-wg-600/20 text-wg-400"
-		} else {
-			class += "border border-transparent text-ink-2 hover:text-ink-1 hover:bg-surface-2/50"
-		}
+	class := "w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-100 "
+	if active {
+		class += "bg-wg-600/10 border border-wg-600/20 text-wg-400"
+	} else {
+		class += "border border-transparent text-ink-2 hover:text-ink-1 hover:bg-surface-2/50"
+	}
 
-		return Button(
-			Apply(Attr{"class": class}),
-			Apply(On{"click": func() {
-				setMobileNavOpen(false)
-				navigate(href)
-			}}),
-			Icon(iconName, 17),
-			Span(Text(label)),
-		)
-	})
+	return Button(
+		Apply(Attr{"class": class}),
+		Apply(On{"click": func() {
+			navigate(href)
+			setMobileNavOpen(false)
+		}}),
+		Icon(iconName, 17),
+		Span(Text(label)),
+	)
 }
 
 // NavRail renders the sidebar navigation.
