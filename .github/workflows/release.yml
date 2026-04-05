@@ -18,7 +18,16 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: '1.26.1'
+
+      - name: Build WASM assets
+        run: |
+          GOROOT=$(go env GOROOT)
+          cp "$GOROOT/lib/wasm/wasm_exec.js" ui/web/wasm_exec.js 2>/dev/null || cp "$GOROOT/misc/wasm/wasm_exec.js" ui/web/wasm_exec.js
+          GOOS=js GOARCH=wasm go build -o ui/web/wgrift.wasm ./ui/web
+          gzip -9 -k -f ui/web/wgrift.wasm
+          # Create brotli placeholder if brotli not available
+          brotli -9 -k -f ui/web/wgrift.wasm 2>/dev/null || cp ui/web/wgrift.wasm.gz ui/web/wgrift.wasm.br
 
       - name: Run tests
         run: go test ./internal/...
