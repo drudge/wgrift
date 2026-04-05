@@ -87,16 +87,21 @@ func SendPeerConfig(s SMTPSettings, p PeerConfigEmail) error {
 	return sendMail(s, p.To, body)
 }
 
-// SendTestEmail sends a simple test email to verify SMTP configuration.
-func SendTestEmail(s SMTPSettings, to string) error {
+// SendTestEmail sends a styled test email to verify SMTP configuration.
+func SendTestEmail(s SMTPSettings, to, serverURL string) error {
+	htmlContent, err := renderTestEmail(serverURL, to)
+	if err != nil {
+		return fmt.Errorf("rendering test email: %w", err)
+	}
+
 	var buf bytes.Buffer
 	buf.WriteString("From: " + s.From + "\r\n")
 	buf.WriteString("To: " + to + "\r\n")
 	buf.WriteString("Subject: wgRift SMTP Test\r\n")
 	buf.WriteString("MIME-Version: 1.0\r\n")
-	buf.WriteString("Content-Type: text/plain; charset=utf-8\r\n")
+	buf.WriteString("Content-Type: text/html; charset=utf-8\r\n")
 	buf.WriteString("\r\n")
-	buf.WriteString("This is a test email from wgRift. Your SMTP configuration is working correctly.\r\n")
+	buf.WriteString(htmlContent)
 
 	return sendMail(s, to, buf.Bytes())
 }

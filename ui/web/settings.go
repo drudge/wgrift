@@ -378,6 +378,24 @@ func smtpTestButton() loom.Node {
 	testResult, setTestResult := Signal("")
 	showTestInput, setShowTestInput := Signal(false)
 
+	doSend := func() {
+		if testing() || testTo() == "" {
+			return
+		}
+		setTesting(true)
+		setTestResult("")
+		go func() {
+			var resp apiResponse
+			err := apiFetch("POST", "/api/v1/settings/smtp/test", map[string]string{"to": testTo()}, &resp)
+			setTesting(false)
+			if err != nil {
+				setTestResult(err.Error())
+			} else {
+				setTestResult("Test email sent!")
+			}
+		}()
+	}
+
 	return Div(
 		Bind(func() loom.Node {
 			show := showTestInput()
@@ -389,16 +407,20 @@ func smtpTestButton() loom.Node {
 			initBtnCls := "inline-flex items-center justify-center text-xs font-medium rounded-md transition-all duration-100 cursor-pointer px-3.5 py-2 text-ink-2 hover:text-ink-1 hover:bg-surface-2"
 			if show {
 				initBtnCls = "hidden"
+				FocusInput(`input[placeholder="test@example.com"]`)
 			} else {
 				btnRowCls = "hidden"
 			}
 
 			resultCls := "hidden"
+			resultIcon := ""
 			if show && resultMsg != "" {
 				if resultMsg == "Test email sent!" {
-					resultCls = "text-xs text-green-400 mt-2"
+					resultCls = "inline-flex items-center gap-1.5 text-xs text-green-400 mt-2"
+					resultIcon = icons["check"](14)
 				} else {
-					resultCls = "text-xs text-red-400 mt-2"
+					resultCls = "inline-flex items-center gap-1.5 text-xs text-red-400 mt-2"
+					resultIcon = icons["triangle-alert"](14)
 				}
 			}
 
@@ -412,7 +434,9 @@ func smtpTestButton() loom.Node {
 			return Div(
 				Button(
 					Apply(Attr{"class": initBtnCls}),
-					Apply(On{"click": func() { setShowTestInput(true) }}),
+					Apply(On{"click": func() {
+						setShowTestInput(true)
+					}}),
 					Text("Send Test Email"),
 				),
 				Div(
@@ -426,26 +450,16 @@ func smtpTestButton() loom.Node {
 						Apply(On{"input": func(evt *EventInput) {
 							setTestTo(evt.InputValue())
 						}}),
+						Apply(On{"keydown": func(evt *EventKeyboard) {
+							if evt.Key() == "Enter" {
+								evt.PreventDefault()
+								doSend()
+							}
+						}}),
 					),
 					Button(
 						Apply(Attr{"class": sendBtnCls}),
-						Apply(On{"click": func() {
-							if testing() || testTo() == "" {
-								return
-							}
-							setTesting(true)
-							setTestResult("")
-							go func() {
-								var resp apiResponse
-								err := apiFetch("POST", "/api/v1/settings/smtp/test", map[string]string{"to": testTo()}, &resp)
-								setTesting(false)
-								if err != nil {
-									setTestResult(err.Error())
-								} else {
-									setTestResult("Test email sent!")
-								}
-							}()
-						}}),
+						Apply(On{"click": func() { doSend() }}),
 						Text(sendBtnLabel),
 					),
 					Button(
@@ -457,7 +471,11 @@ func smtpTestButton() loom.Node {
 						Text("Cancel"),
 					),
 				),
-				Span(Apply(Attr{"class": resultCls}), Text(resultMsg)),
+				Span(
+					Apply(Attr{"class": resultCls}),
+					Span(Apply(innerHTML(resultIcon))),
+					Span(Text(resultMsg)),
+				),
 			)
 		}),
 	)
