@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 	"syscall/js"
@@ -227,6 +228,303 @@ func FormFieldWithHelp(label, inputType, placeholder, helpText string, value Acc
 		),
 		P(Apply(Attr{"class": helpClass}), Text(helpText)),
 	)
+}
+
+// normalizeCIDR attempts to parse a CIDR or bare IP and return a normalized CIDR string.
+// defaultPrefix is appended to bare IPs (e.g., "/24" for interfaces, "/32" for peers).
+func normalizeCIDR(input, defaultPrefix string) (string, bool) {
+	s := strings.TrimSpace(input)
+	if s == "" {
+		return s, true
+	}
+	if _, _, err := net.ParseCIDR(s); err == nil {
+		return s, true
+	}
+	if ip := net.ParseIP(s); ip != nil {
+		cidr := s + defaultPrefix
+		if _, _, err := net.ParseCIDR(cidr); err == nil {
+			return cidr, true
+		}
+	}
+	return s, false
+}
+
+// splitCIDR splits "10.100.0.1/24" into ("10.100.0.1", "24").
+// If no prefix is present, returns the defaultPrefix (without leading slash).
+func splitCIDR(val, defaultPrefix string) (string, string) {
+	val = strings.TrimSpace(val)
+	dflt := strings.TrimPrefix(defaultPrefix, "/")
+	if val == "" {
+		return "", dflt
+	}
+	if parts := strings.SplitN(val, "/", 2); len(parts) == 2 {
+		return parts[0], parts[1]
+	}
+	return val, dflt
+}
+
+// cidrSummary computes a human-readable summary for a CIDR (e.g. "10.100.0.0 – 10.100.0.255 · 254 hosts").
+func cidrSummary(ipStr, prefixStr string) string {
+	if ipStr == "" || prefixStr == "" {
+		return ""
+	}
+	prefix, err := strconv.Atoi(prefixStr)
+	if err != nil || prefix < 0 || prefix > 32 {
+		return ""
+	}
+	ip := net.ParseIP(ipStr)
+	if ip == nil {
+		return ""
+	}
+	ip4 := ip.To4()
+	if ip4 == nil {
+		return ""
+	}
+	if prefix == 32 {
+		return "Single host"
+	}
+	mask := net.CIDRMask(prefix, 32)
+	network := make(net.IP, 4)
+	for i := 0; i < 4; i++ {
+		network[i] = ip4[i] & mask[i]
+	}
+	broadcast := make(net.IP, 4)
+	for i := 0; i < 4; i++ {
+		broadcast[i] = network[i] | ^mask[i]
+	}
+	hosts := (1 << (32 - prefix)) - 2
+	if hosts < 1 {
+		hosts = 1
+	}
+	return fmt.Sprintf("%s – %s · %d %s", network, broadcast, hosts, pluralize(hosts, "host", "hosts"))
+}
+
+// cidrPrefixOptions defines the common CIDR prefix lengths shown in the dropdown.
+var cidrPrefixOptions = []struct {
+	Value string
+	Label string
+}{
+	{"8", "/8"},
+	{"12", "/12"},
+	{"16", "/16"},
+	{"20", "/20"},
+	{"24", "/24"},
+	{"25", "/25"},
+	{"26", "/26"},
+	{"27", "/27"},
+	{"28", "/28"},
+	{"29", "/29"},
+	{"30", "/30"},
+	{"31", "/31"},
+	{"32", "/32"},
+}
+
+// prefixHostHint returns a short host count string for a CIDR prefix (e.g. "254 hosts").
+func prefixHostHint(pfx string) string {
+	n, err := strconv.Atoi(pfx)
+	if err != nil || n < 0 || n > 32 {
+		return "—"
+	}
+	if n == 32 {
+		return "Single host"
+	}
+	if n == 31 {
+		return "2 hosts (point-to-point)"
+	}
+	hosts := (1 << (32 - n)) - 2
+	if hosts >= 1000000 {
+		return fmt.Sprintf("~%dM usable hosts", hosts/1000000)
+	}
+	if hosts >= 1000 {
+		return fmt.Sprintf("~%dK usable hosts", hosts/1000)
+	}
+	return fmt.Sprintf("%d usable hosts", hosts)
+}
+
+var cidrFieldSeq int
+
+// CIDRField renders a compound IP + prefix input with inline validation.
+// For defaultPrefix="/32", it shows a static /32 suffix (host-only mode).
+// For other prefixes, it shows a dropdown of common prefix lengths with info tooltip and subnet summary.
+func CIDRField(label, placeholder, helpText, defaultPrefix string, value Accessor[string], onInput func(string)) loom.Node {
+	cidrFieldSeq++
+	fieldID := fmt.Sprintf("cidr-field-%d", cidrFieldSeq)
+	hostOnly := defaultPrefix == "/32"
+
+	initVal := value()
+	initIP, initPrefix := splitCIDR(initVal, defaultPrefix)
+	ipPart, setIPPart := Signal(initIP)
+	prefixPart, setPrefixPart := Signal(initPrefix)
+	errHint, setErrHint := Signal("")
+
+	var summaryText func() string
+	var setSummaryText func(string)
+	if !hostOnly {
+		summaryText, setSummaryText = Signal(cidrSummary(initIP, initPrefix))
+	}
+
+	placeholderIP, _ := splitCIDR(placeholder, defaultPrefix)
+
+	syncValue := func() {
+		ip := ipPart()
+		pfx := prefixPart()
+		if ip != "" && pfx != "" {
+			onInput(ip + "/" + pfx)
+		} else if ip != "" {
+			onInput(ip)
+		} else {
+			onInput("")
+		}
+		if !hostOnly {
+			setSummaryText(cidrSummary(ip, pfx))
+		}
+	}
+
+	setContainerError := func(hasErr bool) {
+		container := js.Global().Get("document").Call("getElementById", fieldID)
+		if !container.Truthy() {
+			return
+		}
+		cl := container.Get("classList")
+		if hasErr {
+			cl.Call("remove", "border-line-1", "focus-within:border-wg-600/40", "focus-within:ring-wg-600/15")
+			cl.Call("add", "border-red-500/40", "focus-within:border-red-500/40", "focus-within:ring-red-500/15")
+		} else {
+			cl.Call("remove", "border-red-500/40", "focus-within:border-red-500/40", "focus-within:ring-red-500/15")
+			cl.Call("add", "border-line-1", "focus-within:border-wg-600/40", "focus-within:ring-wg-600/15")
+		}
+	}
+
+	clearError := func() {
+		if errHint() != "" {
+			setErrHint("")
+			setContainerError(false)
+		}
+	}
+
+	validateIP := func() {
+		ip := ipPart()
+		if ip == "" {
+			setErrHint("")
+			setContainerError(false)
+			return
+		}
+		if net.ParseIP(ip) == nil {
+			setErrHint("Invalid IP address")
+			setContainerError(true)
+			return
+		}
+		setErrHint("")
+		setContainerError(false)
+	}
+
+	helpClass := "text-xs text-ink-4 mt-1.5"
+	if helpText == "" {
+		helpClass = "hidden"
+	}
+
+	ipAttrs := Attr{
+		"id":          fieldID + "-ip",
+		"class":       "flex-1 min-w-0 px-3.5 py-2.5 bg-transparent text-ink-1 text-sm placeholder-ink-4 focus:outline-none font-mono rounded-md",
+		"type":        "text",
+		"placeholder": placeholderIP,
+	}
+	if initIP != "" {
+		ipAttrs["value"] = initIP
+	}
+
+	// Build right-side content: static /32 label or prefix dropdown + tooltip
+	var rightSide []loom.Node
+	if hostOnly {
+		rightSide = []loom.Node{
+			Span(Apply(Attr{"class": "text-ink-4 text-sm font-mono select-none shrink-0 pr-3"}), Text("/32")),
+		}
+	} else {
+		selectChildren := []loom.Node{
+			Apply(Attr{
+				"id":    fieldID + "-pfx",
+				"class": "bg-transparent text-ink-1 text-sm font-mono py-2.5 pr-2 pl-1 focus:outline-none cursor-pointer appearance-none",
+			}),
+			Apply(On{"change": func(evt *Event) {
+				val := evt.Target().Get("value").String()
+				setPrefixPart(val)
+				syncValue()
+				clearError()
+			}}),
+		}
+		for _, opt := range cidrPrefixOptions {
+			attrs := Attr{"value": opt.Value}
+			if opt.Value == initPrefix {
+				attrs["selected"] = "selected"
+			}
+			selectChildren = append(selectChildren, Elem("option", Apply(attrs), Text(opt.Label)))
+		}
+		rightSide = []loom.Node{
+			Span(Apply(Attr{"class": "text-ink-4 text-sm select-none shrink-0 px-0.5"}), Text("/")),
+			Elem("select", selectChildren...),
+			Bind(func() loom.Node {
+				pfx := prefixPart()
+				hint := prefixHostHint(pfx)
+				return Tooltip(
+					Span(Apply(Attr{"class": "text-ink-4 hover:text-ink-2 transition-colors pr-2.5 pl-1"}), Icon("info", 13)),
+					[]string{hint},
+				)
+			}),
+		}
+	}
+
+	containerChildren := []loom.Node{
+		Apply(Attr{
+			"id":    fieldID,
+			"class": "flex items-center bg-surface-0 border border-line-1 rounded-md focus-within:border-wg-600/40 focus-within:ring-1 focus-within:ring-wg-600/15 transition-colors",
+		}),
+		Input(
+			Apply(ipAttrs),
+			Apply(On{"input": func(evt *EventInput) {
+				setIPPart(evt.InputValue())
+				syncValue()
+				clearError()
+			}}),
+			Apply(On{"blur": func() { validateIP() }}),
+		),
+	}
+	containerChildren = append(containerChildren, rightSide...)
+
+	children := []loom.Node{
+		Apply(Attr{"class": "mb-4 overflow-visible"}),
+		Elem("label", Apply(Attr{"class": "block text-[11px] font-semibold text-ink-3 mb-2 uppercase tracking-[0.08em]"}), Text(label)),
+		Div(containerChildren...),
+	}
+
+	// Subnet summary (only for non-host-only mode)
+	if !hostOnly {
+		children = append(children, Bind(func() loom.Node {
+			s := summaryText()
+			cls := "text-[11px] text-ink-4 mt-1.5 font-mono opacity-0 h-0"
+			txt := "\u00a0"
+			if s != "" {
+				cls = "text-[11px] text-ink-4 mt-1.5 font-mono"
+				txt = s
+			}
+			return P(Apply(Attr{"class": cls}), Text(txt))
+		}))
+	}
+
+	// Inline error hint
+	children = append(children, Bind(func() loom.Node {
+		hint := errHint()
+		cls := "text-xs text-red-400 mt-1 opacity-0 h-0"
+		txt := "\u00a0"
+		if hint != "" {
+			cls = "text-xs text-red-400 mt-1"
+			txt = hint
+		}
+		return P(Apply(Attr{"class": cls}), Text(txt))
+	}))
+
+	children = append(children, P(Apply(Attr{"class": helpClass}), Text(helpText)))
+
+	return Div(children...)
 }
 
 // TypeBadge renders a badge for the interface type.

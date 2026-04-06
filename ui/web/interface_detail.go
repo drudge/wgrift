@@ -329,7 +329,7 @@ func interfaceEditForm(ifaceID string, iface interfaceData, publicKey string) lo
 		ErrorAlert(errMsg),
 		Div(
 			Apply(Attr{"class": "grid grid-cols-1 sm:grid-cols-2 gap-4"}),
-			FormField("Address (CIDR)", "text", "10.100.0.1/24", address, func(v string) { setAddress(v) }),
+			CIDRField("Address (CIDR)", "10.100.0.1/24", "", "/24", address, func(v string) { setAddress(v) }),
 			FormField("Listen Port", "number", "51820", port, func(v string) { setPort(v) }),
 			FormField("Public Endpoint", "text", "vpn.example.com", endpoint, func(v string) { setEndpoint(v) }),
 			FormField("DNS", "text", "1.1.1.1", dns, func(v string) { setDNS(v) }),
