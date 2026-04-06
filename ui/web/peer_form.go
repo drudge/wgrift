@@ -131,8 +131,15 @@ func PeerEditForm(ifaceID string, peer peerData, onSaved func()) loom.Node {
 		if ip == "" {
 			return
 		}
+		if normalized, ok := normalizeCIDR(ip, "/32"); ok {
+			ip = normalized
+		}
 		if _, _, err := net.ParseCIDR(ip); err != nil {
 			setErrMsg(ErrorInfo{Message: fmt.Sprintf("Invalid CIDR: %s", ip)})
+			js.Global().Call("setTimeout", js.FuncOf(func(this js.Value, args []js.Value) any {
+				setErrMsg(ErrorInfo{})
+				return nil
+			}), 3000)
 			return
 		}
 		for _, existing := range allowedIPs {
@@ -155,8 +162,15 @@ func PeerEditForm(ifaceID string, peer peerData, onSaved func()) loom.Node {
 		if ip == "" {
 			return
 		}
+		if normalized, ok := normalizeCIDR(ip, "/32"); ok {
+			ip = normalized
+		}
 		if _, _, err := net.ParseCIDR(ip); err != nil {
 			setErrMsg(ErrorInfo{Message: fmt.Sprintf("Invalid CIDR: %s", ip)})
+			js.Global().Call("setTimeout", js.FuncOf(func(this js.Value, args []js.Value) any {
+				setErrMsg(ErrorInfo{})
+				return nil
+			}), 3000)
 			return
 		}
 		for _, existing := range clientAllowedIPs {
@@ -265,7 +279,7 @@ func PeerEditForm(ifaceID string, peer peerData, onSaved func()) loom.Node {
 			return Div(
 				Apply(Attr{"class": "grid grid-cols-1 sm:grid-cols-2 gap-4"}),
 				FormField("Name", "text", lbl.namePlaceholder, name, func(v string) { setName(v) }),
-				FormField("Tunnel Address", "text", "10.100.0.2/32", address, func(v string) { setAddress(v) }),
+				CIDRField("Tunnel Address", "10.100.0.2/32", "", "/32", address, func(v string) { setAddress(v) }),
 				chipInput(lbl.serverIPsLabel, lbl.serverIPsPlaceholder, lbl.serverIPsHelp, chipsID, inputID, addIP, func() []string { return allowedIPs }, func() {
 					if len(allowedIPs) > 0 {
 						allowedIPs = allowedIPs[:len(allowedIPs)-1]
@@ -470,8 +484,15 @@ func PeerForm(ifaceID string, ifaceAddr string, usedAddrs []string, onCreated fu
 		if ip == "" {
 			return
 		}
+		if normalized, ok := normalizeCIDR(ip, "/32"); ok {
+			ip = normalized
+		}
 		if _, _, err := net.ParseCIDR(ip); err != nil {
 			setErrMsg(ErrorInfo{Message: fmt.Sprintf("Invalid CIDR: %s", ip)})
+			js.Global().Call("setTimeout", js.FuncOf(func(this js.Value, args []js.Value) any {
+				setErrMsg(ErrorInfo{})
+				return nil
+			}), 3000)
 			return
 		}
 		for _, existing := range allowedIPs {
@@ -494,8 +515,15 @@ func PeerForm(ifaceID string, ifaceAddr string, usedAddrs []string, onCreated fu
 		if ip == "" {
 			return
 		}
+		if normalized, ok := normalizeCIDR(ip, "/32"); ok {
+			ip = normalized
+		}
 		if _, _, err := net.ParseCIDR(ip); err != nil {
 			setErrMsg(ErrorInfo{Message: fmt.Sprintf("Invalid CIDR: %s", ip)})
+			js.Global().Call("setTimeout", js.FuncOf(func(this js.Value, args []js.Value) any {
+				setErrMsg(ErrorInfo{})
+				return nil
+			}), 3000)
 			return
 		}
 		for _, existing := range clientAllowedIPs {
@@ -607,7 +635,7 @@ func PeerForm(ifaceID string, ifaceAddr string, usedAddrs []string, onCreated fu
 			return Div(
 				Apply(Attr{"class": "grid grid-cols-1 sm:grid-cols-2 gap-4"}),
 				FormField("Name", "text", lbl.namePlaceholder, name, func(v string) { setName(v) }),
-				FormField("Tunnel Address", "text", "10.100.0.2/32", address, func(v string) { setAddress(v) }),
+				CIDRField("Tunnel Address", "10.100.0.2/32", "", "/32", address, func(v string) { setAddress(v) }),
 				chipInput(lbl.serverIPsLabel, lbl.serverIPsPlaceholder, lbl.serverIPsHelp, chipsID, inputID, addIP, func() []string { return allowedIPs }, func() {
 					if len(allowedIPs) > 0 {
 						allowedIPs = allowedIPs[:len(allowedIPs)-1]
