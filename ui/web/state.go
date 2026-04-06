@@ -112,6 +112,39 @@ func unmarshalData(raw json.RawMessage, v any) error {
 	return json.Unmarshal(raw, v)
 }
 
+// sessionWatchCb listens for visibilitychange to detect expired sessions
+// when the user returns to the tab after being away.
+var sessionWatchCb js.Func
+
+func startSessionWatch() {
+	sessionWatchCb = js.FuncOf(func(this js.Value, args []js.Value) any {
+		if js.Global().Get("document").Get("visibilityState").String() == "visible" {
+			go checkSessionAlive()
+		}
+		return nil
+	})
+	js.Global().Get("document").Call("addEventListener", "visibilitychange", sessionWatchCb)
+}
+
+func stopSessionWatch() {
+	if sessionWatchCb.Truthy() {
+		js.Global().Get("document").Call("removeEventListener", "visibilitychange", sessionWatchCb)
+		sessionWatchCb.Release()
+	}
+}
+
+func checkSessionAlive() {
+	var resp apiResponse
+	if err := apiFetchWithTimeout("GET", "/api/v1/auth/session", nil, &resp, 3*time.Second); err != nil {
+		return
+	}
+	var opts authOptions
+	if err := unmarshalData(resp.Data, &opts); err == nil && opts.AuthRequired {
+		saveRedirectPath()
+		js.Global().Get("window").Get("location").Call("reload")
+	}
+}
+
 const redirectStorageKey = "wgrift_redirect"
 
 // saveRedirectPath stores the current browser path in sessionStorage

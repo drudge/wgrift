@@ -44,6 +44,7 @@ func App() loom.Node {
 		saveRedirectPath()
 		return LoginView()
 	}
+	startSessionWatch()
 	return Layout(Router())
 }
 
