@@ -296,7 +296,7 @@ func cidrSummary(ipStr, prefixStr string) string {
 	if hosts < 1 {
 		hosts = 1
 	}
-	return fmt.Sprintf("%s – %s · %d %s", network, broadcast, hosts, pluralize(hosts, "host", "hosts"))
+	return fmt.Sprintf("%s – %s · %s %s", network, broadcast, formatNumber(hosts), pluralize(hosts, "host", "hosts"))
 }
 
 // cidrPrefixOptions defines the common CIDR prefix lengths shown in the dropdown.
@@ -602,6 +602,21 @@ func FormatBytes(b int64) string {
 	default:
 		return fmt.Sprintf("%d B", b)
 	}
+}
+
+func formatNumber(n int) string {
+	s := strconv.Itoa(n)
+	if len(s) <= 3 {
+		return s
+	}
+	var result []byte
+	for i, c := range s {
+		if i > 0 && (len(s)-i)%3 == 0 {
+			result = append(result, ',')
+		}
+		result = append(result, byte(c))
+	}
+	return string(result)
 }
 
 func pluralize(n int, singular, plural string) string {
