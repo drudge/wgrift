@@ -243,8 +243,8 @@ func interfaceDetailContent(ifaceID string, s *interfaceStatusData, status Acces
 		// Add peer form
 		func() loom.Node {
 			if detailEditPeerID == "__add__" {
-				// Collect used addresses for next-IP calculation
-				var usedAddrs []string
+				// Collect used addresses for next-IP calculation and conflict checking
+				usedAddrs := []string{s.Interface.Address}
 				for _, ps := range s.Peers {
 					if ps.Peer.Address != "" {
 						usedAddrs = append(usedAddrs, ps.Peer.Address)
@@ -276,7 +276,7 @@ func interfaceDetailContent(ifaceID string, s *interfaceStatusData, status Acces
 				if len(s.Peers) == 0 {
 					return EmptyState("No peers configured")
 				}
-				return peerCardList(ifaceID, s.Peers)
+				return peerCardList(ifaceID, s.Interface.Address, s.Peers)
 			}(),
 		),
 	)
@@ -576,7 +576,7 @@ func parseCSV(s string) []string {
 }
 
 // peerCardList renders all peers as card-based rows (replaces the old table+mobile-cards split).
-func peerCardList(ifaceID string, peers []peerStatusData) loom.Node {
+func peerCardList(ifaceID string, ifaceAddr string, peers []peerStatusData) loom.Node {
 	cards := make([]loom.Node, 0, len(peers))
 
 	for _, ps := range peers {
@@ -663,9 +663,16 @@ func peerCardList(ifaceID string, peers []peerStatusData) loom.Node {
 
 		// Inline edit form below card content
 		if detailEditPeerID == ps.Peer.ID {
+			var editUsedAddrs []string
+			editUsedAddrs = append(editUsedAddrs, ifaceAddr)
+			for _, other := range peers {
+				if other.Peer.ID != ps.Peer.ID && other.Peer.Address != "" {
+					editUsedAddrs = append(editUsedAddrs, other.Peer.Address)
+				}
+			}
 			cardChildren = append(cardChildren, Div(
 				Apply(Attr{"class": "mt-4 pt-4 border-t border-line-1"}),
-				PeerEditForm(ifaceID, ps.Peer, func() {
+				PeerEditForm(ifaceID, ps.Peer, editUsedAddrs, func() {
 					detailEditPeerID = ""
 					refreshRoute()
 				}),

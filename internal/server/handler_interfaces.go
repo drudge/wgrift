@@ -8,6 +8,7 @@ import (
 
 	"github.com/drudge/wgrift/internal/confgen"
 	"github.com/drudge/wgrift/internal/models"
+	"github.com/drudge/wgrift/internal/store"
 )
 
 type createInterfaceRequest struct {
@@ -48,6 +49,16 @@ func (s *Server) handleCreateInterface(w http.ResponseWriter, r *http.Request) {
 
 	if req.MTU == 0 {
 		req.MTU = 1420
+	}
+
+	inUse, err := s.store.IsTunnelIPInUse(req.Address, "", "")
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if inUse {
+		writeValidationError(w, "tunnel IP address is already in use by another peer or interface")
+		return
 	}
 
 	iface := &models.Interface{
@@ -95,6 +106,17 @@ func (s *Server) handleUpdateInterface(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.Address != "" {
+		if store.ExtractHostIP(req.Address) != store.ExtractHostIP(iface.Address) {
+			inUse, err := s.store.IsTunnelIPInUse(req.Address, "", iface.ID)
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			if inUse {
+				writeValidationError(w, "tunnel IP address is already in use by another peer or interface")
+				return
+			}
+		}
 		iface.Address = req.Address
 	}
 	if req.ListenPort > 0 {

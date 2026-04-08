@@ -8,6 +8,7 @@ import (
 
 	"github.com/drudge/wgrift/internal/models"
 	"github.com/drudge/wgrift/internal/qr"
+	"github.com/drudge/wgrift/internal/store"
 )
 
 type addPeerRequest struct {
@@ -57,6 +58,18 @@ func (s *Server) handleAddPeer(w http.ResponseWriter, r *http.Request) {
 	if req.AlertEmails != "" {
 		if err := validateEmails(req.AlertEmails); err != nil {
 			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+	}
+
+	if req.Address != "" {
+		inUse, err := s.store.IsTunnelIPInUse(req.Address, "", "")
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if inUse {
+			writeValidationError(w, "tunnel IP address is already in use by another peer or interface")
 			return
 		}
 	}
@@ -127,6 +140,17 @@ func (s *Server) handleUpdatePeer(w http.ResponseWriter, r *http.Request) {
 		peer.Name = req.Name
 	}
 	if req.Address != "" {
+		if store.ExtractHostIP(req.Address) != store.ExtractHostIP(peer.Address) {
+			inUse, err := s.store.IsTunnelIPInUse(req.Address, peer.ID, "")
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			if inUse {
+				writeValidationError(w, "tunnel IP address is already in use by another peer or interface")
+				return
+			}
+		}
 		peer.Address = req.Address
 	}
 	if req.AllowedIPs != "" {

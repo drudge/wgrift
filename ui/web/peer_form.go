@@ -58,7 +58,7 @@ func labelsForType(peerType string) peerLabels {
 	}
 }
 
-func PeerEditForm(ifaceID string, peer peerData, onSaved func()) loom.Node {
+func PeerEditForm(ifaceID string, peer peerData, usedAddrs []string, onSaved func()) loom.Node {
 	initialType := peer.Type
 	if initialType == "" {
 		initialType = "client"
@@ -206,6 +206,13 @@ func PeerEditForm(ifaceID string, peer peerData, onSaved func()) loom.Node {
 		}
 		// Flush pending email input
 		flushAlertEmailInput(setAlertEmails, alertEmails)
+		// Check tunnel IP uniqueness
+		if address() != "" {
+			if isIPInUse(address(), usedAddrs) {
+				setErrMsg(ErrorInfo{Message: "Tunnel IP address is already in use"})
+				return
+			}
+		}
 		// Auto-add tunnel IP as /32 to server AllowedIPs if empty
 		if len(allowedIPs) == 0 && address() != "" {
 			tunnelIP := address()
@@ -394,6 +401,31 @@ func chipInput(label, placeholder, helpText, chipsID, inputID string, addFn func
 	)
 }
 
+// extractHostIP parses a CIDR or bare IP and returns just the host IP.
+func extractHostIP(addr string) string {
+	if ip, _, err := net.ParseCIDR(addr); err == nil {
+		return ip.String()
+	}
+	if ip := net.ParseIP(addr); ip != nil {
+		return ip.String()
+	}
+	return ""
+}
+
+// isIPInUse checks whether the host IP portion of addr matches any entry in usedAddrs.
+func isIPInUse(addr string, usedAddrs []string) bool {
+	target := extractHostIP(addr)
+	if target == "" {
+		return false
+	}
+	for _, used := range usedAddrs {
+		if extractHostIP(used) == target {
+			return true
+		}
+	}
+	return false
+}
+
 // nextAvailableIP computes the next unused IP in the interface's subnet.
 func nextAvailableIP(ifaceAddr string, usedAddrs []string) string {
 	// Parse interface CIDR (e.g. "10.200.0.1/24")
@@ -561,6 +593,13 @@ func PeerForm(ifaceID string, ifaceAddr string, usedAddrs []string, onCreated fu
 		}
 		// Flush pending email input
 		flushAlertEmailInput(setAlertEmails, alertEmails)
+		// Check tunnel IP uniqueness
+		if address() != "" {
+			if isIPInUse(address(), usedAddrs) {
+				setErrMsg(ErrorInfo{Message: "Tunnel IP address is already in use"})
+				return
+			}
+		}
 		// Auto-add tunnel IP as /32 to server AllowedIPs if empty
 		if len(allowedIPs) == 0 && address() != "" {
 			tunnelIP := address()
