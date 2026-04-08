@@ -7,7 +7,7 @@ import (
 )
 
 type jsonResponse struct {
-	Data  any `json:"data,omitempty"`
+	Data  any    `json:"data,omitempty"`
 	Error string `json:"error,omitempty"`
 	Total *int   `json:"total,omitempty"`
 }
@@ -27,6 +27,14 @@ func writeJSONList(w http.ResponseWriter, status int, v any, total int) {
 func writeError(w http.ResponseWriter, status int, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(jsonResponse{Error: message})
+}
+
+// writeValidationError returns a 200 with the error in the body so that
+// reverse proxies (nginx-ingress) don't intercept the response and replace
+// the body with a generic error page.
+func writeValidationError(w http.ResponseWriter, message string) {
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(jsonResponse{Error: message})
 }
 

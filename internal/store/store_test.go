@@ -170,6 +170,71 @@ func TestPeerCRUD(t *testing.T) {
 	}
 }
 
+func TestIsTunnelIPInUse(t *testing.T) {
+	s := testStore(t)
+
+	// Create interface with address 10.100.0.1/24
+	iface := &models.Interface{
+		ID:                  "wg0",
+		Type:                models.InterfaceTypeClientAccess,
+		ListenPort:          51820,
+		PrivateKeyEncrypted: "key",
+		Address:             "10.100.0.1/24",
+		MTU:                 1420,
+		Enabled:             true,
+	}
+	if err := s.CreateInterface(iface); err != nil {
+		t.Fatalf("CreateInterface: %v", err)
+	}
+
+	// Create peer with address 10.100.0.2/32
+	peer := &models.Peer{
+		ID:                  "peer-1",
+		InterfaceID:         "wg0",
+		Type:                models.PeerTypeClient,
+		Name:                "Peer 1",
+		PublicKey:           "cGVlci0xLXB1YmxpYy1rZXk=",
+		PrivateKeyEncrypted: "key",
+		Address:             "10.100.0.2/32",
+		AllowedIPs:          "10.100.0.2/32",
+		Enabled:             true,
+	}
+	if err := s.CreatePeer(peer); err != nil {
+		t.Fatalf("CreatePeer: %v", err)
+	}
+
+	tests := []struct {
+		name           string
+		ip             string
+		excludePeerID  string
+		excludeIfaceID string
+		want           bool
+	}{
+		{"peer IP conflict", "10.100.0.2/32", "", "", true},
+		{"peer IP conflict different prefix", "10.100.0.2/24", "", "", true},
+		{"peer IP conflict bare IP", "10.100.0.2", "", "", true},
+		{"interface IP conflict", "10.100.0.1/24", "", "", true},
+		{"interface IP conflict different prefix", "10.100.0.1/32", "", "", true},
+		{"unused IP", "10.100.0.3/32", "", "", false},
+		{"exclude peer by ID", "10.100.0.2/32", "peer-1", "", false},
+		{"exclude interface by ID", "10.100.0.1/24", "", "wg0", false},
+		{"empty address", "", "", "", false},
+		{"invalid address", "not-an-ip", "", "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := s.IsTunnelIPInUse(tt.ip, tt.excludePeerID, tt.excludeIfaceID)
+			if err != nil {
+				t.Fatalf("IsTunnelIPInUse: %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("got %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestCascadeDelete(t *testing.T) {
 	s := testStore(t)
 

@@ -3,6 +3,7 @@ package store
 import (
 	"database/sql"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/drudge/wgrift/internal/models"
@@ -27,6 +28,9 @@ type Store interface {
 	ListAllPeers() ([]models.Peer, error)
 	UpdatePeer(peer *models.Peer) error
 	DeletePeer(id string) error
+
+	// Validation
+	IsTunnelIPInUse(ip, excludePeerID, excludeIfaceID string) (bool, error)
 
 	// Users
 	CreateUser(user *models.User) error
@@ -310,6 +314,68 @@ func (s *SQLiteStore) DeletePeer(id string) error {
 		return fmt.Errorf("deleting peer: %w", err)
 	}
 	return nil
+}
+
+// ExtractHostIP parses a CIDR or bare IP and returns just the host IP.
+func ExtractHostIP(addr string) string {
+	if ip, _, err := net.ParseCIDR(addr); err == nil {
+		return ip.String()
+	}
+	if ip := net.ParseIP(addr); ip != nil {
+		return ip.String()
+	}
+	return ""
+}
+
+func (s *SQLiteStore) IsTunnelIPInUse(ip, excludePeerID, excludeIfaceID string) (bool, error) {
+	targetIP := ExtractHostIP(ip)
+	if targetIP == "" {
+		return false, nil
+	}
+
+	// Check peer addresses
+	rows, err := s.db.Query(`SELECT id, address FROM peers WHERE address != ''`)
+	if err != nil {
+		return false, fmt.Errorf("querying peer addresses: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id, addr string
+		if err := rows.Scan(&id, &addr); err != nil {
+			return false, fmt.Errorf("scanning peer address: %w", err)
+		}
+		if id == excludePeerID {
+			continue
+		}
+		if ExtractHostIP(addr) == targetIP {
+			return true, nil
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return false, err
+	}
+
+	// Check interface addresses
+	rows2, err := s.db.Query(`SELECT id, address FROM interfaces WHERE address != ''`)
+	if err != nil {
+		return false, fmt.Errorf("querying interface addresses: %w", err)
+	}
+	defer rows2.Close()
+
+	for rows2.Next() {
+		var id, addr string
+		if err := rows2.Scan(&id, &addr); err != nil {
+			return false, fmt.Errorf("scanning interface address: %w", err)
+		}
+		if id == excludeIfaceID {
+			continue
+		}
+		if ExtractHostIP(addr) == targetIP {
+			return true, nil
+		}
+	}
+	return false, rows2.Err()
 }
 
 // --- Helpers ---

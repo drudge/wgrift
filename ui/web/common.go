@@ -296,7 +296,7 @@ func cidrSummary(ipStr, prefixStr string) string {
 	if hosts < 1 {
 		hosts = 1
 	}
-	return fmt.Sprintf("%s – %s · %d %s", network, broadcast, hosts, pluralize(hosts, "host", "hosts"))
+	return fmt.Sprintf("%s – %s · %s %s", network, broadcast, formatNumber(hosts), pluralize(hosts, "host", "hosts"))
 }
 
 // cidrPrefixOptions defines the common CIDR prefix lengths shown in the dropdown.
@@ -319,28 +319,6 @@ var cidrPrefixOptions = []struct {
 	{"32", "/32"},
 }
 
-// prefixHostHint returns a short host count string for a CIDR prefix (e.g. "254 hosts").
-func prefixHostHint(pfx string) string {
-	n, err := strconv.Atoi(pfx)
-	if err != nil || n < 0 || n > 32 {
-		return "—"
-	}
-	if n == 32 {
-		return "Single host"
-	}
-	if n == 31 {
-		return "2 hosts (point-to-point)"
-	}
-	hosts := (1 << (32 - n)) - 2
-	if hosts >= 1000000 {
-		return fmt.Sprintf("~%dM usable hosts", hosts/1000000)
-	}
-	if hosts >= 1000 {
-		return fmt.Sprintf("~%dK usable hosts", hosts/1000)
-	}
-	return fmt.Sprintf("%d usable hosts", hosts)
-}
-
 var cidrFieldSeq int
 
 // CIDRField renders a compound IP + prefix input with inline validation.
@@ -357,10 +335,24 @@ func CIDRField(label, placeholder, helpText, defaultPrefix string, value Accesso
 	prefixPart, setPrefixPart := Signal(initPrefix)
 	errHint, setErrHint := Signal("")
 
-	var summaryText func() string
-	var setSummaryText func(string)
-	if !hostOnly {
-		summaryText, setSummaryText = Signal(cidrSummary(initIP, initPrefix))
+	summaryID := fieldID + "-summary"
+
+	updateSummary := func(ip, pfx string) {
+		if hostOnly {
+			return
+		}
+		el := js.Global().Get("document").Call("getElementById", summaryID)
+		if !el.Truthy() {
+			return
+		}
+		s := cidrSummary(ip, pfx)
+		if s != "" {
+			el.Set("className", "text-[11px] text-ink-4 mt-1.5 font-mono")
+			el.Set("textContent", s)
+		} else {
+			el.Set("className", "text-[11px] text-ink-4 mt-1.5 font-mono opacity-0 h-0")
+			el.Set("textContent", "\u00a0")
+		}
 	}
 
 	placeholderIP, _ := splitCIDR(placeholder, defaultPrefix)
@@ -375,9 +367,7 @@ func CIDRField(label, placeholder, helpText, defaultPrefix string, value Accesso
 		} else {
 			onInput("")
 		}
-		if !hostOnly {
-			setSummaryText(cidrSummary(ip, pfx))
-		}
+		updateSummary(ip, pfx)
 	}
 
 	setContainerError := func(hasErr bool) {
@@ -423,27 +413,39 @@ func CIDRField(label, placeholder, helpText, defaultPrefix string, value Accesso
 		helpClass = "hidden"
 	}
 
+	ipInputID := fieldID + "-ip"
 	ipAttrs := Attr{
-		"id":          fieldID + "-ip",
+		"id":          ipInputID,
 		"class":       "flex-1 min-w-0 px-3.5 py-2.5 bg-transparent text-ink-1 text-sm placeholder-ink-4 focus:outline-none font-mono rounded-md",
 		"type":        "text",
 		"placeholder": placeholderIP,
 	}
+	// Set initial value via DOM after mount instead of Attr so that Loom's
+	// applier stack cannot re-apply it and reset cursor/selection mid-edit.
 	if initIP != "" {
-		ipAttrs["value"] = initIP
+		js.Global().Call("requestAnimationFrame", js.FuncOf(func(this js.Value, args []js.Value) any {
+			el := js.Global().Get("document").Call("getElementById", ipInputID)
+			if el.Truthy() {
+				el.Set("value", initIP)
+			}
+			return nil
+		}))
 	}
 
 	// Build right-side content: static /32 label or prefix dropdown + tooltip
 	var rightSide []loom.Node
 	if hostOnly {
 		rightSide = []loom.Node{
-			Span(Apply(Attr{"class": "text-ink-4 text-sm font-mono select-none shrink-0 pr-3"}), Text("/32")),
+			Div(
+				Apply(Attr{"class": "flex items-center border-l border-line-1 pl-2.5 pr-3 self-stretch"}),
+				Span(Apply(Attr{"class": "text-ink-4 text-sm font-mono select-none"}), Text("/32")),
+			),
 		}
 	} else {
 		selectChildren := []loom.Node{
 			Apply(Attr{
 				"id":    fieldID + "-pfx",
-				"class": "bg-transparent text-ink-1 text-sm font-mono py-2.5 pr-2 pl-1 focus:outline-none cursor-pointer appearance-none",
+				"class": "bg-transparent text-ink-1 text-sm font-mono py-2.5 pr-6 pl-2.5 focus:outline-none cursor-pointer appearance-none",
 			}),
 			Apply(On{"change": func(evt *Event) {
 				val := evt.Target().Get("value").String()
@@ -460,32 +462,36 @@ func CIDRField(label, placeholder, helpText, defaultPrefix string, value Accesso
 			selectChildren = append(selectChildren, Elem("option", Apply(attrs), Text(opt.Label)))
 		}
 		rightSide = []loom.Node{
-			Span(Apply(Attr{"class": "text-ink-4 text-sm select-none shrink-0 px-0.5"}), Text("/")),
-			Elem("select", selectChildren...),
-			Bind(func() loom.Node {
-				pfx := prefixPart()
-				hint := prefixHostHint(pfx)
-				return Tooltip(
-					Span(Apply(Attr{"class": "text-ink-4 hover:text-ink-2 transition-colors pr-2.5 pl-1"}), Icon("info", 13)),
-					[]string{hint},
-				)
-			}),
+			Div(
+				Apply(Attr{"class": "relative flex items-center border-l border-line-1"}),
+				Elem("select", selectChildren...),
+				Span(Apply(Attr{"class": "pointer-events-none absolute right-1.5 text-ink-4"}), Icon("chevron-down", 12)),
+			),
 		}
 	}
 
 	containerChildren := []loom.Node{
 		Apply(Attr{
 			"id":    fieldID,
-			"class": "flex items-center bg-surface-0 border border-line-1 rounded-md focus-within:border-wg-600/40 focus-within:ring-1 focus-within:ring-wg-600/15 transition-colors",
+			"class": "flex items-center bg-surface-0 border border-line-1 rounded-md overflow-hidden focus-within:border-wg-600/40 focus-within:ring-1 focus-within:ring-inset focus-within:ring-wg-600/15 transition-colors",
 		}),
 		Input(
 			Apply(ipAttrs),
 			Apply(On{"input": func(evt *EventInput) {
-				setIPPart(evt.InputValue())
-				syncValue()
-				clearError()
+				val := evt.InputValue()
+				setIPPart(val)
+				// Defer sync/summary updates to avoid DOM mutations during the
+				// input event, which can reset cursor position on WebKit.
+				js.Global().Call("requestAnimationFrame", js.FuncOf(func(this js.Value, args []js.Value) any {
+					syncValue()
+					clearError()
+					return nil
+				}))
 			}}),
-			Apply(On{"blur": func() { validateIP() }}),
+			Apply(On{"blur": func() {
+				syncValue()
+				validateIP()
+			}}),
 		),
 	}
 	containerChildren = append(containerChildren, rightSide...)
@@ -496,18 +502,17 @@ func CIDRField(label, placeholder, helpText, defaultPrefix string, value Accesso
 		Div(containerChildren...),
 	}
 
-	// Subnet summary (only for non-host-only mode)
+	// Subnet summary (only for non-host-only mode) — updated via DOM to avoid
+	// Bind re-renders that can reset cursor/selection during typing.
 	if !hostOnly {
-		children = append(children, Bind(func() loom.Node {
-			s := summaryText()
-			cls := "text-[11px] text-ink-4 mt-1.5 font-mono opacity-0 h-0"
-			txt := "\u00a0"
-			if s != "" {
-				cls = "text-[11px] text-ink-4 mt-1.5 font-mono"
-				txt = s
-			}
-			return P(Apply(Attr{"class": cls}), Text(txt))
-		}))
+		initSummary := cidrSummary(initIP, initPrefix)
+		sumCls := "text-[11px] text-ink-4 mt-1.5 font-mono opacity-0 h-0"
+		sumTxt := "\u00a0"
+		if initSummary != "" {
+			sumCls = "text-[11px] text-ink-4 mt-1.5 font-mono"
+			sumTxt = initSummary
+		}
+		children = append(children, P(Apply(Attr{"id": summaryID, "class": sumCls}), Text(sumTxt)))
 	}
 
 	// Inline error hint
@@ -597,6 +602,21 @@ func FormatBytes(b int64) string {
 	default:
 		return fmt.Sprintf("%d B", b)
 	}
+}
+
+func formatNumber(n int) string {
+	s := strconv.Itoa(n)
+	if len(s) <= 3 {
+		return s
+	}
+	var result []byte
+	for i, c := range s {
+		if i > 0 && (len(s)-i)%3 == 0 {
+			result = append(result, ',')
+		}
+		result = append(result, byte(c))
+	}
+	return string(result)
 }
 
 func pluralize(n int, singular, plural string) string {
