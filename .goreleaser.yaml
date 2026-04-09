@@ -39,6 +39,7 @@ archives:
 dockers:
   - id: wgrift-amd64
     ids: [wgrift]
+    use: buildx
     goos: linux
     goarch: amd64
     dockerfile: deploy/docker/Dockerfile
@@ -60,6 +61,7 @@ dockers:
 
   - id: wgrift-arm64
     ids: [wgrift]
+    use: buildx
     goos: linux
     goarch: arm64
     dockerfile: deploy/docker/Dockerfile
