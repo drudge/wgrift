@@ -1,0 +1,16 @@
+bin/
+dist/
+tmp/
+.git/
+.idea/
+.vscode/
+.context/
+.DS_Store
+*.db
+*.db-wal
+*.db-shm
+*.swp
+ui/web/wgrift.wasm
+ui/web/wgrift.wasm.gz
+ui/web/wgrift.wasm.br
+ui/web/wasm_exec.js
