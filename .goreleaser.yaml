@@ -57,9 +57,6 @@ dockers:
       - "--label=org.opencontainers.image.source=https://github.com/drudge/wgrift"
       - "--label=org.opencontainers.image.created={{ .Date }}"
       - "--label=org.opencontainers.image.revision={{ .Commit }}"
-    extra_files:
-      - deploy/docker/docker-entrypoint.sh
-      - deploy/config.yaml
 
   - id: wgrift-arm64
     ids: [wgrift]
@@ -81,9 +78,6 @@ dockers:
       - "--label=org.opencontainers.image.source=https://github.com/drudge/wgrift"
       - "--label=org.opencontainers.image.created={{ .Date }}"
       - "--label=org.opencontainers.image.revision={{ .Commit }}"
-    extra_files:
-      - deploy/docker/docker-entrypoint.sh
-      - deploy/config.yaml
 
 docker_manifests:
   - name_template: "ghcr.io/drudge/wgrift:{{ .Version }}"
