@@ -48,6 +48,8 @@ dockers:
       - "ghcr.io/drudge/wgrift:latest-amd64"
     build_flag_templates:
       - "--pull"
+      - "--no-cache"
+      - "--load"
       - "--platform=linux/amd64"
       - "--label=org.opencontainers.image.title=wgRift"
       - "--label=org.opencontainers.image.description=WireGuard VPN management platform"
@@ -70,6 +72,8 @@ dockers:
       - "ghcr.io/drudge/wgrift:latest-arm64"
     build_flag_templates:
       - "--pull"
+      - "--no-cache"
+      - "--load"
       - "--platform=linux/arm64"
       - "--label=org.opencontainers.image.title=wgRift"
       - "--label=org.opencontainers.image.description=WireGuard VPN management platform"
