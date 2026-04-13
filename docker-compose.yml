@@ -4,13 +4,15 @@ services:
     # Or build locally:
     # build: .
     restart: unless-stopped
-    network_mode: host
     cap_add:
       - NET_ADMIN
       - NET_RAW
     sysctls:
       - net.ipv4.ip_forward=1
       - net.ipv4.conf.all.src_valid_mark=1
+    ports:
+      - "8080:8080"       # Web UI
+      - "51820:51820/udp" # WireGuard (adjust to match your interface listen port)
     volumes:
       - wgrift-config:/etc/wgrift
       - wgrift-data:/var/lib/wgrift
@@ -20,9 +22,12 @@ services:
       # WGRIFT_LISTEN: "0.0.0.0:8080"
       # WGRIFT_DEMO_MODE: "false"
       # WGRIFT_SMTP_PASSWORD: ""
-    # Note: With network_mode: host, the container shares the host network.
-    # wgRift listens on 0.0.0.0:8080 by default.
-    # The host must have the WireGuard kernel module loaded.
+    # The host must have the WireGuard kernel module loaded (modprobe wireguard).
+    # Map additional UDP ports if you create multiple WireGuard interfaces.
+    #
+    # For host networking (simpler routing, no port mapping needed):
+    #   network_mode: host
+    #   # Remove the "ports" section above when using host networking.
 
 volumes:
   wgrift-config:

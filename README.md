@@ -97,10 +97,11 @@ head -c 32 /dev/urandom | base64 > master.key
 # Run with Docker
 docker run -d \
   --name wgrift \
-  --network host \
   --cap-add NET_ADMIN \
   --cap-add NET_RAW \
   --sysctl net.ipv4.ip_forward=1 \
+  -p 8080:8080 \
+  -p 51820:51820/udp \
   -v wgrift-config:/etc/wgrift \
   -v wgrift-data:/var/lib/wgrift \
   -v wireguard:/etc/wireguard \
@@ -108,13 +109,15 @@ docker run -d \
   ghcr.io/drudge/wgrift:latest
 ```
 
+Map additional UDP ports if you create multiple WireGuard interfaces. For simpler routing, you can use `--network host` instead of port mapping (remove the `-p` flags).
+
 Or with Docker Compose (see [`docker-compose.yml`](docker-compose.yml)):
 
 ```bash
 docker compose up -d
 ```
 
-> **Note:** The host must have the WireGuard kernel module loaded (`modprobe wireguard`). The container requires host networking for WireGuard interface management.
+> **Note:** The host must have the WireGuard kernel module loaded (`modprobe wireguard`).
 
 ### Proxmox LXC
 
