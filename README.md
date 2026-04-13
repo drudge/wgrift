@@ -88,6 +88,34 @@ cp deploy/wgrift.service /etc/systemd/system/
 systemctl enable --now wgrift
 ```
 
+### Docker
+
+```bash
+# Generate a master encryption key
+head -c 32 /dev/urandom | base64 > master.key
+
+# Run with Docker
+docker run -d \
+  --name wgrift \
+  --network host \
+  --cap-add NET_ADMIN \
+  --cap-add NET_RAW \
+  --sysctl net.ipv4.ip_forward=1 \
+  -v wgrift-config:/etc/wgrift \
+  -v wgrift-data:/var/lib/wgrift \
+  -v wireguard:/etc/wireguard \
+  -v $(pwd)/master.key:/etc/wgrift/master.key:ro \
+  ghcr.io/drudge/wgrift:latest
+```
+
+Or with Docker Compose (see [`docker-compose.yml`](docker-compose.yml)):
+
+```bash
+docker compose up -d
+```
+
+> **Note:** The host must have the WireGuard kernel module loaded (`modprobe wireguard`). The container requires host networking for WireGuard interface management.
+
 ### Proxmox LXC
 
 ```bash
