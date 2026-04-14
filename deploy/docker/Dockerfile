@@ -2,7 +2,7 @@
 # GoReleaser runtime image — binary is pre-built and provided by GoReleaser
 FROM alpine:3.21
 
-RUN apk add --no-cache wireguard-tools ca-certificates && \
+RUN apk add --no-cache wireguard-tools iptables ca-certificates && \
     mkdir -p /etc/wgrift /var/lib/wgrift /etc/wireguard
 
 COPY wgrift /usr/local/bin/wgrift

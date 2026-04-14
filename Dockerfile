@@ -44,7 +44,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
 # Runtime stage
 FROM alpine:3.21
 
-RUN apk add --no-cache wireguard-tools ca-certificates && \
+RUN apk add --no-cache wireguard-tools iptables ca-certificates && \
     mkdir -p /etc/wgrift /var/lib/wgrift /etc/wireguard
 
 COPY --from=builder /out/wgrift /usr/local/bin/wgrift
