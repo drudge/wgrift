@@ -1,0 +1,2 @@
+ALTER TABLE interfaces ADD COLUMN post_up TEXT NOT NULL DEFAULT '';
+ALTER TABLE interfaces ADD COLUMN post_down TEXT NOT NULL DEFAULT '';

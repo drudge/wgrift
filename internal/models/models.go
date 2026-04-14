@@ -25,6 +25,8 @@ type Interface struct {
 	DNS                 string        `json:"dns"`
 	MTU                 int           `json:"mtu"`
 	Endpoint            string        `json:"endpoint"`
+	PostUp              string        `json:"post_up"`
+	PostDown            string        `json:"post_down"`
 	Enabled             bool          `json:"enabled"`
 	CreatedAt           time.Time     `json:"created_at"`
 	UpdatedAt           time.Time     `json:"updated_at"`

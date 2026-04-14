@@ -295,6 +295,59 @@ AllowedIPs = 10.200.0.3/32
 	}
 }
 
+func TestParseConfig_PostUpDown(t *testing.T) {
+	input := `[Interface]
+PrivateKey = key123=
+Address = 10.0.0.1/24
+PostUp = iptables -A FORWARD -i %i -j ACCEPT
+PostUp = iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+PostDown = iptables -D FORWARD -i %i -j ACCEPT
+PostDown = iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+`
+	cfg, err := ParseConfig(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(cfg.Interface.PostUp) != 2 {
+		t.Fatalf("expected 2 PostUp commands, got %d", len(cfg.Interface.PostUp))
+	}
+	if cfg.Interface.PostUp[0] != "iptables -A FORWARD -i %i -j ACCEPT" {
+		t.Errorf("PostUp[0] = %q", cfg.Interface.PostUp[0])
+	}
+	if cfg.Interface.PostUp[1] != "iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE" {
+		t.Errorf("PostUp[1] = %q", cfg.Interface.PostUp[1])
+	}
+
+	if len(cfg.Interface.PostDown) != 2 {
+		t.Fatalf("expected 2 PostDown commands, got %d", len(cfg.Interface.PostDown))
+	}
+	if cfg.Interface.PostDown[0] != "iptables -D FORWARD -i %i -j ACCEPT" {
+		t.Errorf("PostDown[0] = %q", cfg.Interface.PostDown[0])
+	}
+	if cfg.Interface.PostDown[1] != "iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE" {
+		t.Errorf("PostDown[1] = %q", cfg.Interface.PostDown[1])
+	}
+}
+
+func TestParseConfig_NoPostUpDown(t *testing.T) {
+	input := `[Interface]
+PrivateKey = key123=
+Address = 10.0.0.1/24
+`
+	cfg, err := ParseConfig(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(cfg.Interface.PostUp) != 0 {
+		t.Errorf("expected 0 PostUp commands, got %d", len(cfg.Interface.PostUp))
+	}
+	if len(cfg.Interface.PostDown) != 0 {
+		t.Errorf("expected 0 PostDown commands, got %d", len(cfg.Interface.PostDown))
+	}
+}
+
 func TestParseConfig_CommentNotDirectlyBeforePeer(t *testing.T) {
 	input := `[Interface]
 PrivateKey = key123=

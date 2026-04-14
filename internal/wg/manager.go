@@ -165,6 +165,8 @@ func (m *Manager) SyncInterface(id string) error {
 		ListenPort: iface.ListenPort,
 		MTU:        iface.MTU,
 		DNS:        iface.DNS,
+		PostUp:     iface.PostUp,
+		PostDown:   iface.PostDown,
 		Peers:      peerBlocks,
 	}
 
@@ -585,6 +587,8 @@ func (m *Manager) ImportInterface(parsed *confgen.ParsedConfig, id string, iface
 		Address:             parsed.Interface.Address,
 		DNS:                 parsed.Interface.DNS,
 		MTU:                 mtu,
+		PostUp:              strings.Join(parsed.Interface.PostUp, "\n"),
+		PostDown:            strings.Join(parsed.Interface.PostDown, "\n"),
 		Enabled:             true,
 	}
 

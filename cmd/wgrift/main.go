@@ -112,6 +112,14 @@ func runServe(cfgPath string) error {
 	}
 	defer mgr.Close()
 
+	// Auto-start enabled interfaces
+	if cfg.Server.ShouldAutoStart() && !cfg.Demo {
+		log.Println("Syncing all enabled interfaces...")
+		if err := mgr.SyncAll(); err != nil {
+			log.Printf("WARNING: interface auto-start had errors: %v", err)
+		}
+	}
+
 	// Server
 	srv := server.New(cfg, authSvc, oidcSvc, mgr, db, enc)
 

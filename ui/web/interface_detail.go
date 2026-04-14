@@ -225,17 +225,35 @@ func interfaceDetailContent(ifaceID string, s *interfaceStatusData, status Acces
 					return interfaceEditForm(ifaceID, s.Interface, s.PublicKey)
 				}
 				return Div(
-					Apply(Attr{"class": "grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4 text-sm"}),
-					infoItem("Address", s.Interface.Address),
-					infoItem("Port", fmt.Sprintf("%d", s.Interface.ListenPort)),
-					infoItem("Endpoint", func() string {
-						if s.Interface.Endpoint != "" {
-							return s.Interface.Endpoint
+					Div(
+						Apply(Attr{"class": "grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4 text-sm"}),
+						infoItem("Address", s.Interface.Address),
+						infoItem("Port", fmt.Sprintf("%d", s.Interface.ListenPort)),
+						infoItem("Endpoint", func() string {
+							if s.Interface.Endpoint != "" {
+								return s.Interface.Endpoint
+							}
+							return "(auto-detect)"
+						}()),
+						copyableInfoItem("Public Key", s.PublicKey),
+						infoItem("Available IPs", formatAvailableIPs(s.Interface.Address, len(s.Peers))),
+					),
+					func() loom.Node {
+						if s.Interface.PostUp == "" && s.Interface.PostDown == "" {
+							return Span()
 						}
-						return "(auto-detect)"
-					}()),
-					copyableInfoItem("Public Key", s.PublicKey),
-					infoItem("Available IPs", formatAvailableIPs(s.Interface.Address, len(s.Peers))),
+						var items []loom.Node
+						if s.Interface.PostUp != "" {
+							items = append(items, hookInfoItem("PostUp", s.Interface.PostUp))
+						}
+						if s.Interface.PostDown != "" {
+							items = append(items, hookInfoItem("PostDown", s.Interface.PostDown))
+						}
+						return Div(
+							Apply(Attr{"class": "mt-4 pt-4 border-t border-line-1/50 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm"}),
+							Fragment(items...),
+						)
+					}(),
 				)
 			}(),
 		),
@@ -288,8 +306,22 @@ func interfaceEditForm(ifaceID string, iface interfaceData, publicKey string) lo
 	dns, setDNS := Signal(iface.DNS)
 	mtu, setMTU := Signal(strconv.Itoa(iface.MTU))
 	endpoint, setEndpoint := Signal(iface.Endpoint)
+	postUp, setPostUp := Signal(iface.PostUp)
+	postDown, setPostDown := Signal(iface.PostDown)
 	errMsg, setErrMsg := Signal(ErrorInfo{})
 	FocusInput(`input[placeholder="10.100.0.1/24"]`)
+
+	// Set textarea initial values after mount (textareas need .value, not attribute)
+	js.Global().Call("setTimeout", js.FuncOf(func(this js.Value, args []js.Value) any {
+		doc := js.Global().Get("document")
+		if el := doc.Call("getElementById", "postup-input"); el.Truthy() {
+			el.Set("value", iface.PostUp)
+		}
+		if el := doc.Call("getElementById", "postdown-input"); el.Truthy() {
+			el.Set("value", iface.PostDown)
+		}
+		return nil
+	}), 0)
 
 	doSave := func() {
 		setErrMsg(ErrorInfo{})
@@ -311,6 +343,8 @@ func interfaceEditForm(ifaceID string, iface interfaceData, publicKey string) lo
 				"dns":         dns(),
 				"mtu":         mtuVal,
 				"endpoint":    endpoint(),
+				"post_up":     postUp(),
+				"post_down":   postDown(),
 			}, &resp)
 			if err != nil {
 				setErrMsg(apiErrorInfo(err))
@@ -336,6 +370,40 @@ func interfaceEditForm(ifaceID string, iface interfaceData, publicKey string) lo
 			FormField("MTU", "number", "1420", mtu, func(v string) { setMTU(v) }),
 			readOnlyCopyField("Public Key", publicKey),
 		),
+		// PostUp / PostDown textareas (full-width below the grid)
+		Div(
+			Apply(Attr{"class": "grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4"}),
+			Div(
+				Elem("label", Apply(Attr{"class": "block text-[11px] font-semibold text-ink-3 mb-2 uppercase tracking-[0.08em]"}), Text("PostUp Commands")),
+				Elem("textarea",
+					Apply(Attr{
+						"class":       "w-full px-3.5 py-2.5 bg-surface-0 border border-line-1 rounded-md text-ink-1 text-sm placeholder-ink-4 focus:outline-none focus:border-wg-600/40 focus:ring-1 focus:ring-wg-600/15 transition-colors font-mono",
+						"placeholder": "iptables -A FORWARD -i %i -j ACCEPT",
+						"rows":        "3",
+						"id":          "postup-input",
+					}),
+					Apply(On{"input": func(evt *EventInput) {
+						setPostUp(evt.InputValue())
+					}}),
+				),
+				Div(Apply(Attr{"class": "text-[10px] text-ink-4 mt-1.5"}), Text("One command per line. Runs when interface starts.")),
+			),
+			Div(
+				Elem("label", Apply(Attr{"class": "block text-[11px] font-semibold text-ink-3 mb-2 uppercase tracking-[0.08em]"}), Text("PostDown Commands")),
+				Elem("textarea",
+					Apply(Attr{
+						"class":       "w-full px-3.5 py-2.5 bg-surface-0 border border-line-1 rounded-md text-ink-1 text-sm placeholder-ink-4 focus:outline-none focus:border-wg-600/40 focus:ring-1 focus:ring-wg-600/15 transition-colors font-mono",
+						"placeholder": "iptables -D FORWARD -i %i -j ACCEPT",
+						"rows":        "3",
+						"id":          "postdown-input",
+					}),
+					Apply(On{"input": func(evt *EventInput) {
+						setPostDown(evt.InputValue())
+					}}),
+				),
+				Div(Apply(Attr{"class": "text-[10px] text-ink-4 mt-1.5"}), Text("One command per line. Runs when interface stops.")),
+			),
+		),
 		Div(
 			Apply(Attr{"class": "flex items-center gap-2 mt-2"}),
 			Btn("Save", "primary", doSave),
@@ -351,6 +419,20 @@ func infoItem(label, value string) loom.Node {
 	return Div(
 		Div(Apply(Attr{"class": "text-[11px] text-ink-3 uppercase tracking-widest font-medium mb-1.5"}), Text(label)),
 		Div(Apply(Attr{"class": "font-mono text-ink-1 text-sm"}), Text(value)),
+	)
+}
+
+func hookInfoItem(label, value string) loom.Node {
+	var lines []loom.Node
+	for _, cmd := range strings.Split(value, "\n") {
+		cmd = strings.TrimSpace(cmd)
+		if cmd != "" {
+			lines = append(lines, Div(Apply(Attr{"class": "font-mono text-ink-1 text-xs"}), Text(cmd)))
+		}
+	}
+	return Div(
+		Div(Apply(Attr{"class": "text-[11px] text-ink-3 uppercase tracking-widest font-medium mb-1.5"}), Text(label)),
+		Fragment(lines...),
 	)
 }
 

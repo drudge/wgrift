@@ -122,10 +122,10 @@ func (s *SQLiteStore) CreateInterface(iface *models.Interface) error {
 	iface.UpdatedAt = now
 
 	_, err := s.db.Exec(`
-		INSERT INTO interfaces (id, type, listen_port, private_key_encrypted, address, dns, mtu, endpoint, enabled, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO interfaces (id, type, listen_port, private_key_encrypted, address, dns, mtu, endpoint, post_up, post_down, enabled, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		iface.ID, iface.Type, iface.ListenPort, iface.PrivateKeyEncrypted,
-		iface.Address, iface.DNS, iface.MTU, iface.Endpoint, iface.Enabled,
+		iface.Address, iface.DNS, iface.MTU, iface.Endpoint, iface.PostUp, iface.PostDown, iface.Enabled,
 		iface.CreatedAt, iface.UpdatedAt,
 	)
 	if err != nil {
@@ -137,11 +137,11 @@ func (s *SQLiteStore) CreateInterface(iface *models.Interface) error {
 func (s *SQLiteStore) GetInterface(id string) (*models.Interface, error) {
 	iface := &models.Interface{}
 	err := s.db.QueryRow(`
-		SELECT id, type, listen_port, private_key_encrypted, address, dns, mtu, endpoint, enabled, created_at, updated_at
+		SELECT id, type, listen_port, private_key_encrypted, address, dns, mtu, endpoint, post_up, post_down, enabled, created_at, updated_at
 		FROM interfaces WHERE id = ?`, id,
 	).Scan(
 		&iface.ID, &iface.Type, &iface.ListenPort, &iface.PrivateKeyEncrypted,
-		&iface.Address, &iface.DNS, &iface.MTU, &iface.Endpoint, &iface.Enabled,
+		&iface.Address, &iface.DNS, &iface.MTU, &iface.Endpoint, &iface.PostUp, &iface.PostDown, &iface.Enabled,
 		&iface.CreatedAt, &iface.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
@@ -155,7 +155,7 @@ func (s *SQLiteStore) GetInterface(id string) (*models.Interface, error) {
 
 func (s *SQLiteStore) ListInterfaces() ([]models.Interface, error) {
 	rows, err := s.db.Query(`
-		SELECT id, type, listen_port, private_key_encrypted, address, dns, mtu, endpoint, enabled, created_at, updated_at
+		SELECT id, type, listen_port, private_key_encrypted, address, dns, mtu, endpoint, post_up, post_down, enabled, created_at, updated_at
 		FROM interfaces ORDER BY created_at`)
 	if err != nil {
 		return nil, fmt.Errorf("querying interfaces: %w", err)
@@ -167,7 +167,7 @@ func (s *SQLiteStore) ListInterfaces() ([]models.Interface, error) {
 		var iface models.Interface
 		if err := rows.Scan(
 			&iface.ID, &iface.Type, &iface.ListenPort, &iface.PrivateKeyEncrypted,
-			&iface.Address, &iface.DNS, &iface.MTU, &iface.Endpoint, &iface.Enabled,
+			&iface.Address, &iface.DNS, &iface.MTU, &iface.Endpoint, &iface.PostUp, &iface.PostDown, &iface.Enabled,
 			&iface.CreatedAt, &iface.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scanning interface: %w", err)
@@ -180,10 +180,10 @@ func (s *SQLiteStore) ListInterfaces() ([]models.Interface, error) {
 func (s *SQLiteStore) UpdateInterface(iface *models.Interface) error {
 	iface.UpdatedAt = time.Now().UTC()
 	_, err := s.db.Exec(`
-		UPDATE interfaces SET type=?, listen_port=?, private_key_encrypted=?, address=?, dns=?, mtu=?, endpoint=?, enabled=?, updated_at=?
+		UPDATE interfaces SET type=?, listen_port=?, private_key_encrypted=?, address=?, dns=?, mtu=?, endpoint=?, post_up=?, post_down=?, enabled=?, updated_at=?
 		WHERE id=?`,
 		iface.Type, iface.ListenPort, iface.PrivateKeyEncrypted,
-		iface.Address, iface.DNS, iface.MTU, iface.Endpoint, iface.Enabled,
+		iface.Address, iface.DNS, iface.MTU, iface.Endpoint, iface.PostUp, iface.PostDown, iface.Enabled,
 		iface.UpdatedAt, iface.ID,
 	)
 	if err != nil {
