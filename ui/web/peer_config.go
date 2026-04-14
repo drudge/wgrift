@@ -23,51 +23,29 @@ func PeerConfigView(ifaceID, peerID string) loom.Node {
 	loading, setLoading := Signal(true)
 	peerName, setPeerName := Signal("")
 
-	Effect(func() {
+	loadConfig := func() {
+		setLoading(true)
+		setConfigErr("")
+		setConf("")
 		go func() {
-			type result struct {
-				text string
-				name string
-				ok   bool
+			resp, err := apiFetchText("GET",
+				fmt.Sprintf("/api/v1/interfaces/%s/peers/%s/config", ifaceID, peerID),
+				[]string{"X-Peer-Name"})
+			if err != nil {
+				setConfigErr(apiErrorInfo(err).Message)
+				setLoading(false)
+				return
 			}
-			done := make(chan result, 1)
-
-			opts := js.Global().Get("Object").New()
-			opts.Set("method", "GET")
-			opts.Set("credentials", "same-origin")
-
-			thenFn := js.FuncOf(func(this js.Value, args []js.Value) any {
-				response := args[0]
-				isOK := response.Get("ok").Bool()
-				name := response.Get("headers").Call("get", "X-Peer-Name").String()
-				response.Call("text").Call("then", js.FuncOf(func(this js.Value, args []js.Value) any {
-					done <- result{text: args[0].String(), name: name, ok: isOK}
-					return nil
-				}))
-				return nil
-			})
-			defer thenFn.Release()
-
-			catchFn := js.FuncOf(func(this js.Value, args []js.Value) any {
-				done <- result{text: "Failed to fetch config", ok: false}
-				return nil
-			})
-			defer catchFn.Release()
-
-			js.Global().Call("fetch", fmt.Sprintf("/api/v1/interfaces/%s/peers/%s/config", ifaceID, peerID), opts).
-				Call("then", thenFn).Call("catch", catchFn)
-
-			r := <-done
-			if r.ok {
-				setConf(r.text)
-				if r.name != "" && r.name != "<null>" {
-					setPeerName(r.name)
-				}
-			} else {
-				setConfigErr("This peer was imported without a private key. Client configuration is not available.")
+			setConf(resp.Text)
+			if name := resp.Headers["X-Peer-Name"]; name != "" {
+				setPeerName(name)
 			}
 			setLoading(false)
 		}()
+	}
+
+	Effect(func() {
+		loadConfig()
 	})
 
 	// Poll for first connection — celebrate once per peer
@@ -178,9 +156,15 @@ func PeerConfigView(ifaceID, peerID string) loom.Node {
 					Div(Apply(Attr{"class": "text-ink-3 text-4xl"}), Text("🔒")),
 					Div(Apply(Attr{"class": "text-ink-1 font-medium"}), Text("Config Unavailable")),
 					Div(Apply(Attr{"class": "text-ink-3 text-sm max-w-md"}), Text(configErr())),
-					Btn("← Back", "ghost", func() {
-						navigate(fmt.Sprintf("/interfaces/%s", ifaceID))
-					}),
+					Div(
+						Apply(Attr{"class": "flex items-center gap-2"}),
+						Btn("← Back", "ghost", func() {
+							navigate(fmt.Sprintf("/interfaces/%s", ifaceID))
+						}),
+						Btn("Retry", "primary", func() {
+							loadConfig()
+						}),
+					),
 				),
 			)
 		}),

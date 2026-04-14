@@ -109,6 +109,102 @@ func apiFetchWithTimeout(method, path string, body any, result any, timeout time
 	return nil
 }
 
+// textResponse holds the result of an apiFetchText call.
+type textResponse struct {
+	Text    string
+	Headers map[string]string
+	Status  int
+}
+
+// apiFetchText makes an HTTP request and returns the raw response text.
+// Unlike apiFetch, it does not parse JSON. It includes the same timeout,
+// session-expiry handling, and error extraction as apiFetch.
+// headerKeys specifies which response headers to capture in the result.
+func apiFetchText(method, path string, headerKeys []string) (textResponse, error) {
+	timeout := 10 * time.Second
+
+	opts := js.Global().Get("Object").New()
+	opts.Set("method", method)
+	opts.Set("credentials", "same-origin")
+
+	headers := js.Global().Get("Object").New()
+	if csrfToken != "" && method != "GET" {
+		headers.Set("X-CSRF-Token", csrfToken)
+	}
+	opts.Set("headers", headers)
+
+	controller := js.Global().Get("AbortController").New()
+	opts.Set("signal", controller.Get("signal"))
+	timeoutID := js.Global().Call("setTimeout", js.FuncOf(func(this js.Value, args []js.Value) any {
+		controller.Call("abort")
+		return nil
+	}), int(timeout.Milliseconds()))
+
+	type result struct {
+		resp textResponse
+		err  error
+	}
+	done := make(chan result, 1)
+
+	thenFn := js.FuncOf(func(this js.Value, args []js.Value) any {
+		js.Global().Call("clearTimeout", timeoutID)
+		response := args[0]
+		status := response.Get("status").Int()
+
+		captured := make(map[string]string, len(headerKeys))
+		for _, k := range headerKeys {
+			v := response.Get("headers").Call("get", k).String()
+			if v != "" && v != "<null>" {
+				captured[k] = v
+			}
+		}
+
+		response.Call("text").Call("then", js.FuncOf(func(this js.Value, args []js.Value) any {
+			body := args[0].String()
+
+			if status == 403 && path != "/api/v1/auth/login" && path != "/api/v1/auth/session" {
+				msg := extractErrorMessage(body)
+				if msg == "authentication required" || msg == "invalid session" {
+					saveRedirectPath()
+					js.Global().Get("window").Get("location").Call("reload")
+					done <- result{err: fmt.Errorf("session expired")}
+					return nil
+				}
+			}
+
+			if status >= 400 {
+				msg := extractErrorMessage(body)
+				done <- result{err: &apiError{
+					Status:  status,
+					Message: msg,
+					Raw:     fmt.Sprintf("HTTP %d: %s", status, body),
+				}}
+			} else {
+				done <- result{resp: textResponse{
+					Text:    body,
+					Headers: captured,
+					Status:  status,
+				}}
+			}
+			return nil
+		}))
+		return nil
+	})
+	defer thenFn.Release()
+
+	catchFn := js.FuncOf(func(this js.Value, args []js.Value) any {
+		js.Global().Call("clearTimeout", timeoutID)
+		done <- result{err: fmt.Errorf("fetch error: %v", args[0])}
+		return nil
+	})
+	defer catchFn.Release()
+
+	js.Global().Call("fetch", path, opts).Call("then", thenFn).Call("catch", catchFn)
+
+	r := <-done
+	return r.resp, r.err
+}
+
 // extractErrorMessage tries to pull a human-readable message from a JSON error response.
 // Handles wgRift format {"error":"msg"} and proxy/ingress format {"message":"...", "description":"..."}.
 func extractErrorMessage(body string) string {
