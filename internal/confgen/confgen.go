@@ -14,12 +14,12 @@ type PeerConfParams struct {
 	DNS        string
 
 	// Server side
-	ServerPublicKey string
-	ServerEndpoint  string
-	AllowedIPs      string
-	PresharedKey    string
+	ServerPublicKey     string
+	ServerEndpoint      string
+	AllowedIPs          string
+	PresharedKey        string
 	PersistentKeepalive int
-	MTU             int
+	MTU                 int
 }
 
 // GeneratePeerConf produces a standard WireGuard .conf file for a peer/client.
@@ -64,6 +64,8 @@ type ServerConfParams struct {
 	ListenPort int
 	MTU        int
 	DNS        string
+	PostUp     string
+	PostDown   string
 	Peers      []ServerPeerBlock
 }
 
@@ -91,6 +93,23 @@ func GenerateServerConf(p ServerConfParams) string {
 	}
 	// DNS is intentionally omitted from server configs — it's a client-side
 	// directive that causes wg-quick to invoke resolvconf on the server.
+
+	if p.PostUp != "" {
+		for _, cmd := range strings.Split(p.PostUp, "\n") {
+			cmd = strings.TrimSpace(cmd)
+			if cmd != "" {
+				fmt.Fprintf(&b, "PostUp = %s\n", cmd)
+			}
+		}
+	}
+	if p.PostDown != "" {
+		for _, cmd := range strings.Split(p.PostDown, "\n") {
+			cmd = strings.TrimSpace(cmd)
+			if cmd != "" {
+				fmt.Fprintf(&b, "PostDown = %s\n", cmd)
+			}
+		}
+	}
 
 	for _, peer := range p.Peers {
 		b.WriteString("\n[Peer]\n")

@@ -1,6 +1,7 @@
 server:
   listen: "0.0.0.0:8080"
   external_url: ""  # Set to your public IP or hostname
+  auto_start_interfaces: true  # Sync enabled interfaces on startup (env: WGRIFT_AUTO_START_INTERFACES)
   tls:
     mode: none      # Set to "acme" or "manual" for production
 

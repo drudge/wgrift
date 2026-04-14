@@ -21,9 +21,20 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Listen      string    `yaml:"listen"`
-	ExternalURL string    `yaml:"external_url"`
-	TLS         TLSConfig `yaml:"tls"`
+	Listen              string    `yaml:"listen"`
+	ExternalURL         string    `yaml:"external_url"`
+	AutoStartInterfaces *bool     `yaml:"auto_start_interfaces"`
+	TLS                 TLSConfig `yaml:"tls"`
+}
+
+func boolPtr(b bool) *bool { return &b }
+
+// ShouldAutoStart returns whether interfaces should be synced on startup (default: true).
+func (c *ServerConfig) ShouldAutoStart() bool {
+	if c.AutoStartInterfaces == nil {
+		return true
+	}
+	return *c.AutoStartInterfaces
 }
 
 type TLSConfig struct {
@@ -122,8 +133,9 @@ func Defaults() Config {
 	return Config{
 		Demo: os.Getenv("WGRIFT_DEMO_MODE") == "true",
 		Server: ServerConfig{
-			Listen: "0.0.0.0:8080",
-			TLS:    TLSConfig{Mode: "none"},
+			Listen:              "0.0.0.0:8080",
+			AutoStartInterfaces: boolPtr(true),
+			TLS:                 TLSConfig{Mode: "none"},
 		},
 		Database: DatabaseConfig{
 			Path: "./wgrift.db",
@@ -175,6 +187,11 @@ func Load(path string) (Config, error) {
 
 	if os.Getenv("WGRIFT_DEMO_MODE") == "true" {
 		cfg.Demo = true
+	}
+
+	if v := os.Getenv("WGRIFT_AUTO_START_INTERFACES"); v != "" {
+		val := v == "true" || v == "1"
+		cfg.Server.AutoStartInterfaces = &val
 	}
 
 	return cfg, nil

@@ -20,6 +20,8 @@ type ParsedInterface struct {
 	ListenPort int
 	DNS        string
 	MTU        int
+	PostUp     []string
+	PostDown   []string
 }
 
 // ParsedPeer holds the fields from a [Peer] section.
@@ -118,6 +120,10 @@ func ParseConfig(input string) (*ParsedConfig, error) {
 					return nil, fmt.Errorf("invalid MTU %q: %w", value, err)
 				}
 				cfg.Interface.MTU = mtu
+			case "postup":
+				cfg.Interface.PostUp = append(cfg.Interface.PostUp, value)
+			case "postdown":
+				cfg.Interface.PostDown = append(cfg.Interface.PostDown, value)
 			}
 		case sectionPeer:
 			if peerIndex < 0 {

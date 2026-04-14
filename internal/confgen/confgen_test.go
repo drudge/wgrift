@@ -89,3 +89,57 @@ func TestGenerateServerConf(t *testing.T) {
 		}
 	}
 }
+
+func TestGenerateServerConf_PostUpDown(t *testing.T) {
+	conf := GenerateServerConf(ServerConfParams{
+		PrivateKey: "c2VydmVyLXByaXZhdGU=",
+		Address:    "10.100.0.1/24",
+		ListenPort: 51820,
+		PostUp:     "iptables -A FORWARD -i %i -j ACCEPT\niptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE",
+		PostDown:   "iptables -D FORWARD -i %i -j ACCEPT",
+	})
+
+	checks := []string{
+		"PostUp = iptables -A FORWARD -i %i -j ACCEPT",
+		"PostUp = iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE",
+		"PostDown = iptables -D FORWARD -i %i -j ACCEPT",
+	}
+
+	for _, check := range checks {
+		if !strings.Contains(conf, check) {
+			t.Errorf("server config missing %q\nGot:\n%s", check, conf)
+		}
+	}
+}
+
+func TestGenerateServerConf_NoPostUpDown(t *testing.T) {
+	conf := GenerateServerConf(ServerConfParams{
+		PrivateKey: "c2VydmVyLXByaXZhdGU=",
+		Address:    "10.100.0.1/24",
+		ListenPort: 51820,
+	})
+
+	if strings.Contains(conf, "PostUp") {
+		t.Errorf("config should not contain PostUp when empty\nGot:\n%s", conf)
+	}
+	if strings.Contains(conf, "PostDown") {
+		t.Errorf("config should not contain PostDown when empty\nGot:\n%s", conf)
+	}
+}
+
+func TestGenerateStrippedConf_OmitsPostUpDown(t *testing.T) {
+	conf := GenerateStrippedConf(ServerConfParams{
+		PrivateKey: "c2VydmVyLXByaXZhdGU=",
+		Address:    "10.100.0.1/24",
+		ListenPort: 51820,
+		PostUp:     "iptables -A FORWARD -i %i -j ACCEPT",
+		PostDown:   "iptables -D FORWARD -i %i -j ACCEPT",
+	})
+
+	if strings.Contains(conf, "PostUp") {
+		t.Errorf("stripped config should not contain PostUp\nGot:\n%s", conf)
+	}
+	if strings.Contains(conf, "PostDown") {
+		t.Errorf("stripped config should not contain PostDown\nGot:\n%s", conf)
+	}
+}

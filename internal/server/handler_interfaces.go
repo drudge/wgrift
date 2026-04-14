@@ -19,6 +19,8 @@ type createInterfaceRequest struct {
 	DNS        string `json:"dns"`
 	MTU        int    `json:"mtu"`
 	Endpoint   string `json:"endpoint"`
+	PostUp     string `json:"post_up"`
+	PostDown   string `json:"post_down"`
 }
 
 func (s *Server) handleListInterfaces(w http.ResponseWriter, r *http.Request) {
@@ -69,6 +71,8 @@ func (s *Server) handleCreateInterface(w http.ResponseWriter, r *http.Request) {
 		DNS:        req.DNS,
 		MTU:        req.MTU,
 		Endpoint:   req.Endpoint,
+		PostUp:     req.PostUp,
+		PostDown:   req.PostDown,
 	}
 
 	if err := s.manager.CreateInterface(iface); err != nil {
@@ -85,6 +89,8 @@ type updateInterfaceRequest struct {
 	DNS        string `json:"dns"`
 	MTU        int    `json:"mtu"`
 	Endpoint   string `json:"endpoint"`
+	PostUp     string `json:"post_up"`
+	PostDown   string `json:"post_down"`
 }
 
 func (s *Server) handleUpdateInterface(w http.ResponseWriter, r *http.Request) {
@@ -124,6 +130,8 @@ func (s *Server) handleUpdateInterface(w http.ResponseWriter, r *http.Request) {
 	}
 	iface.DNS = req.DNS
 	iface.Endpoint = req.Endpoint
+	iface.PostUp = req.PostUp
+	iface.PostDown = req.PostDown
 	if req.MTU > 0 {
 		iface.MTU = req.MTU
 	}
