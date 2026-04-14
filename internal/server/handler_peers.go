@@ -266,6 +266,10 @@ func (s *Server) handlePeerConfig(w http.ResponseWriter, r *http.Request) {
 
 	peer, err := s.store.GetPeer(id)
 	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if peer == nil {
 		writeError(w, http.StatusNotFound, "peer not found")
 		return
 	}
