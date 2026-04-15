@@ -1,8 +1,10 @@
 services:
   wgrift:
     image: ghcr.io/drudge/wgrift:latest
-    # Or build locally:
-    # build: .
+    # Or build locally (requires pre-built binary):
+    # build:
+    #   context: .
+    #   dockerfile: deploy/docker/Dockerfile
     restart: unless-stopped
     network_mode: host
     cap_add:
