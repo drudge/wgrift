@@ -4,7 +4,7 @@ before:
   hooks:
     - sh -c 'GOOS=js GOARCH=wasm GOWASM=satconv,signext go build -ldflags "-s -w -X github.com/drudge/wgrift/pkg/version.Version={{ .Version }} -X github.com/drudge/wgrift/pkg/version.Commit={{ .Commit }} -X github.com/drudge/wgrift/pkg/version.Date={{ .Date }}" -o ui/web/wgrift.wasm ./ui/web'
     - sh -c 'rm -f ui/web/wasm_exec.js && GOROOT=$(go env GOROOT) && { cp "$GOROOT/lib/wasm/wasm_exec.js" ui/web/wasm_exec.js 2>/dev/null || cp "$GOROOT/misc/wasm/wasm_exec.js" ui/web/wasm_exec.js; }'
-    - sh -c 'gzip -9 -k -f ui/web/wgrift.wasm && brotli -9 -k -f ui/web/wgrift.wasm'
+    - sh -c 'gzip -9 -k -f ui/web/wgrift.wasm && { brotli -9 -k -f ui/web/wgrift.wasm 2>/dev/null || cp ui/web/wgrift.wasm.gz ui/web/wgrift.wasm.br; }'
 
 builds:
   - id: wgrift
@@ -36,59 +36,28 @@ archives:
       - src: deploy/install.sh
         strip_parent: true
 
-dockers:
-  - id: wgrift-amd64
+dockers_v2:
+  - id: wgrift
     ids: [wgrift]
-    use: buildx
-    goos: linux
-    goarch: amd64
     dockerfile: deploy/docker/Dockerfile
-    image_templates:
-      - "ghcr.io/drudge/wgrift:{{ .Version }}-amd64"
-      - "ghcr.io/drudge/wgrift:latest-amd64"
-    build_flag_templates:
-      - "--pull"
-      - "--no-cache"
-      - "--load"
-      - "--platform=linux/amd64"
-      - "--label=org.opencontainers.image.title=wgRift"
-      - "--label=org.opencontainers.image.description=WireGuard VPN management platform"
-      - "--label=org.opencontainers.image.version={{ .Version }}"
-      - "--label=org.opencontainers.image.source=https://github.com/drudge/wgrift"
-      - "--label=org.opencontainers.image.created={{ .Date }}"
-      - "--label=org.opencontainers.image.revision={{ .Commit }}"
-
-  - id: wgrift-arm64
-    ids: [wgrift]
-    use: buildx
-    goos: linux
-    goarch: arm64
-    dockerfile: deploy/docker/Dockerfile
-    image_templates:
-      - "ghcr.io/drudge/wgrift:{{ .Version }}-arm64"
-      - "ghcr.io/drudge/wgrift:latest-arm64"
-    build_flag_templates:
-      - "--pull"
-      - "--no-cache"
-      - "--load"
-      - "--platform=linux/arm64"
-      - "--label=org.opencontainers.image.title=wgRift"
-      - "--label=org.opencontainers.image.description=WireGuard VPN management platform"
-      - "--label=org.opencontainers.image.version={{ .Version }}"
-      - "--label=org.opencontainers.image.source=https://github.com/drudge/wgrift"
-      - "--label=org.opencontainers.image.created={{ .Date }}"
-      - "--label=org.opencontainers.image.revision={{ .Commit }}"
-
-docker_manifests:
-  - name_template: "ghcr.io/drudge/wgrift:{{ .Version }}"
-    image_templates:
-      - "ghcr.io/drudge/wgrift:{{ .Version }}-amd64"
-      - "ghcr.io/drudge/wgrift:{{ .Version }}-arm64"
-
-  - name_template: "ghcr.io/drudge/wgrift:latest"
-    image_templates:
-      - "ghcr.io/drudge/wgrift:latest-amd64"
-      - "ghcr.io/drudge/wgrift:latest-arm64"
+    extra_files:
+      - deploy/docker/docker-entrypoint.sh
+      - deploy/config.yaml
+    images:
+      - "ghcr.io/drudge/wgrift"
+    tags:
+      - "{{ .Version }}"
+      - latest
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    labels:
+      "org.opencontainers.image.title": "wgRift"
+      "org.opencontainers.image.description": "WireGuard VPN management platform"
+      "org.opencontainers.image.version": "{{ .Version }}"
+      "org.opencontainers.image.source": "https://github.com/drudge/wgrift"
+      "org.opencontainers.image.created": "{{ .Date }}"
+      "org.opencontainers.image.revision": "{{ .Commit }}"
 
 checksum:
   name_template: "checksums.txt"

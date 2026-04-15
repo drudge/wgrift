@@ -34,14 +34,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build WASM assets
-        run: |
-          GOROOT=$(go env GOROOT)
-          cp "$GOROOT/lib/wasm/wasm_exec.js" ui/web/wasm_exec.js 2>/dev/null || cp "$GOROOT/misc/wasm/wasm_exec.js" ui/web/wasm_exec.js
-          GOOS=js GOARCH=wasm go build -o ui/web/wgrift.wasm ./ui/web
-          gzip -9 -k -f ui/web/wgrift.wasm
-          # Create brotli placeholder if brotli not available
-          brotli -9 -k -f ui/web/wgrift.wasm 2>/dev/null || cp ui/web/wgrift.wasm.gz ui/web/wgrift.wasm.br
+      - name: Install brotli
+        run: sudo apt-get install -y brotli
 
       - name: Run tests
         run: go test ./internal/...
